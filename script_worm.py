@@ -4,6 +4,7 @@ import scipy.io
 from tqdm import tqdm
 import numpy as np
 from glob import glob
+from logguru import logger
 import torch
 from PIL import Image
 from skimage import io
@@ -19,6 +20,7 @@ from config import BATCH_SIZE, MAX_RANK, SPHERE_RADIUS, APPELL_TYPE, APPELL_PARA
 # Setting
 assert torch.cuda.is_available()
 device = torch.device('cuda')
+logger.debug(f"Running on {device}")
 
 
 def get_sphere_mask(radius):
@@ -41,11 +43,13 @@ classes = torch.zeros([10, 77], dtype=torch.float64).to(device)
 
 for idx, f in enumerate(glob('classes/*.mat')):
     classes[idx] = torch.from_numpy(scipy.io.loadmat(f, mat_dtype=True)['invariants'])
+logger.debug("Training sample invariants loaded.")
 
 # Prepare Data
 worm = torch.from_numpy(numpy_worm).to(device)
 sphere_mask = torch.from_numpy(get_sphere_mask(SPHERE_RADIUS)).to(device)
 invariant_out = torch.zeros((BATCH_SIZE, INVARIANTS_NUM)).to(device)
+logger.debug("Data prepared.")
 
 distance_result = -1 * torch.ones([*worm.shape], dtype=torch.float64).to(device)
 distance_arg = -1 * torch.ones([*worm.shape], dtype=torch.int64).to(device)
@@ -62,6 +66,7 @@ model = InvariantAppell(rank=MAX_RANK,
                         device=device)
 
 
+logger.debug("Invariants calculation.")
 cache = torch.zeros([BATCH_SIZE, SRZ, SRZ, SRZ]).to(device)
 cache_indicies = torch.zeros([BATCH_SIZE, 3], dtype=torch.int64)
 pbar_x = tqdm(total=worm.shape[0] - SPHERE_RADIUS, position=0, desc="X:", leave=False, colour='green', ncols=80)
@@ -77,7 +82,7 @@ for x in np.arange(SPHERE_RADIUS, worm.shape[0] - SPHERE_RADIUS):
             cache_indicies[cache_idx, 0] = x
             cache_indicies[cache_idx, 1] = y
             cache_indicies[cache_idx, 2] = z
-            if cache_idx == 9 or z == (worm.shape[2] - SPHERE_RADIUS - 1):
+            if cache_idx == BATCH_SIZE or z == (worm.shape[2] - SPHERE_RADIUS - 1):
                 invariant_out = model.calc_invariants(cache * sphere_mask, invariant_out)
                 distance = torch.cdist(invariant_out[:cache_idx+1], classes)
                 min_distance, argmin_distance = torch.min(distance, dim=-1)

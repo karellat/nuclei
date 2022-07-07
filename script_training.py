@@ -1,3 +1,4 @@
+from logguru import logger
 import numpy as np
 import torch
 from appell_polynomials_3D import appell_polynomials_recursive_3d, Appell_Type, Appell_polynomial_weights, \
@@ -5,13 +6,16 @@ from appell_polynomials_3D import appell_polynomials_recursive_3d, Appell_Type, 
 from appell_invariant import InvariantAppell
 import scipy.io
 from dataset import get_mask, get_data
-from matlab_bridge import matlab_image_to_invariants
 
 from config import MAX_RANK, SPHERE_RADIUS, APPELL_TYPE, APPELL_PARAM, APPELL_WEIGHT, SRZ, TYPES, INVARIANTS_NUM, MASK_NUM, PATH, PATH_MASK
 
 # Setting
+DEBUG = False
 assert torch.cuda.is_available()
 device = torch.device('cuda')
+if DEBUG:
+    from matlab_bridge import matlab_image_to_invariants
+    logger.debug("Debug mode")
 
 numpy_worm = get_data(PATH)
 numpy_masks = get_mask(PATH_MASK)
@@ -44,17 +48,17 @@ for mask_idx in mask_indicies:
                             cz - SPHERE_RADIUS:cz + SPHERE_RADIUS + 1]).to(device)
     np.testing.assert_allclose(torch.sum(cube).cpu(), np.sum(masked))
     invariants = torch.zeros((1, INVARIANTS_NUM)).to(device)
-    # TODO: Assert with the matlab
-    matlab_invariant = matlab_image_to_invariants(img=cube.cpu().numpy(),
-                                                  srz=SRZ,
-                                                  types=TYPES,
-                                                  appell_type=APPELL_TYPE,
-                                                  appell_param=APPELL_PARAM,
-                                                  appell_rank=MAX_RANK,
-                                                  appell_weight=APPELL_WEIGHT
-                                                  )
     invariants = model.calc_invariants(cube.reshape((1, SRZ, SRZ, SRZ)), invariants)
-    np.testing.assert_allclose(matlab_invariant, invariants.cpu().numpy())
+    if DEBUG:
+        matlab_invariant = matlab_image_to_invariants(img=cube.cpu().numpy(),
+                                                      srz=SRZ,
+                                                      types=TYPES,
+                                                      appell_type=APPELL_TYPE,
+                                                      appell_param=APPELL_PARAM,
+                                                      appell_rank=MAX_RANK,
+                                                      appell_weight=APPELL_WEIGHT
+                                                      )
+        np.testing.assert_allclose(matlab_invariant, invariants.cpu().numpy())
 
     scipy.io.savemat(f'nuclei_{mask_idx}.mat',
                      dict(file=PATH,

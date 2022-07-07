@@ -11,5 +11,5 @@ SRZ = SPHERE_RADIUS * 2 + 1
 TYPES = 0
 INVARIANTS_NUM = 77
 MASK_NUM = 12
-PATH = "/home/karellat/PycharmProjects/nuclei/data/c_elegans_nuclei/train/images/C18G1_2L1_1.tif"
-PATH_MASK = "/home/karellat/PycharmProjects/nuclei/data/c_elegans_nuclei/train/masks/C18G1_2L1_1.tif"
+PATH = "data/c_elegans_nuclei/train/images/C18G1_2L1_1.tif"
+PATH_MASK = "data/c_elegans_nuclei/train/masks/C18G1_2L1_1.tif"

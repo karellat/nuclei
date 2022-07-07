@@ -4,6 +4,7 @@ channels:
   - defaults
 dependencies:
   - python=3.10.4
+  - pip=21.2.4
   - pytorch=1.11.0
   - scipy=1.7.3
   - torchaudio=0.11.0
@@ -15,3 +16,4 @@ dependencies:
     - oct2py==5.5.1
     - scikit-image==0.19.3
     - tqdm==4.64.0
+    - loguru
