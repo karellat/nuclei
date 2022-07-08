@@ -1,13 +1,12 @@
+import os
 from loguru import logger
 import numpy as np
 import torch
-from appell_polynomials_3D import appell_polynomials_recursive_3d, Appell_Type, Appell_polynomial_weights, \
-    appell_moments_3d_predef, cafmi3d, moments_volume_normalization
 from appell_invariant import InvariantAppell
 import scipy.io
 from dataset import get_mask, get_data
 
-from config import MAX_RANK, SPHERE_RADIUS, APPELL_TYPE, APPELL_PARAM, APPELL_WEIGHT, SRZ, TYPES, INVARIANTS_NUM, MASK_NUM, PATH, PATH_MASK
+from config import MAX_RANK, SPHERE_RADIUS, APPELL_TYPE, APPELL_PARAM, APPELL_WEIGHT, SRZ, TYPES, INVARIANTS_NUM, MASK_NUM, PATH, PATH_MASK, PATH_CLASSES
 
 # Setting
 DEBUG = False
@@ -23,7 +22,7 @@ numpy_masks = get_mask(PATH_MASK)
 mask_indicies = np.unique(numpy_masks)
 mask_indicies = mask_indicies[np.linspace(10,
                                           mask_indicies.shape[0]-10,
-                                          MASK_NUM).astype(int)]
+                                          MASK_NUM-2).astype(int)]
 
 model = InvariantAppell(rank=MAX_RANK,
                         appell_type=APPELL_TYPE,
@@ -60,7 +59,7 @@ for mask_idx in mask_indicies:
                                                       )
         np.testing.assert_allclose(matlab_invariant, invariants.cpu().numpy())
 
-    scipy.io.savemat(f'nuclei_{mask_idx}.mat',
+    scipy.io.savemat(os.path.join(PATH_CLASSES, f'nuclei_{mask_idx}.mat'),
                      dict(file=PATH,
                           mask_file=PATH_MASK,
                           rank=MAX_RANK,

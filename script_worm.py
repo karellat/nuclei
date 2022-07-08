@@ -1,21 +1,15 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import scipy.io
 from tqdm import tqdm
 import numpy as np
 from glob import glob
 from loguru import logger
+import os
 import torch
-from PIL import Image
-from skimage import io
-import torch
-from appell_polynomials_3D import appell_polynomials_recursive_3d, Appell_Type, Appell_polynomial_weights, \
-    appell_moments_3d_predef, cafmi3d, moments_volume_normalization
 from appell_invariant import InvariantAppell
 from dataset import get_data
 
 # Config
-from config import BATCH_SIZE, MAX_RANK, SPHERE_RADIUS, APPELL_TYPE, APPELL_PARAM, APPELL_WEIGHT, SRZ, TYPES, INVARIANTS_NUM, PATH
+from config import BATCH_SIZE, MAX_RANK, SPHERE_RADIUS, APPELL_TYPE, APPELL_PARAM, APPELL_WEIGHT, SRZ, TYPES, INVARIANTS_NUM, PATH, PATH_CLASSES, OUTPUT_NAME
 
 # Setting
 assert torch.cuda.is_available()
@@ -41,7 +35,7 @@ numpy_worm = get_data(PATH)
 
 classes = torch.zeros([10, 77], dtype=torch.float64).to(device)
 
-for idx, f in enumerate(glob('classes/*.mat')):
+for idx, f in enumerate(glob(os.path.join(PATH_CLASSES, '*.mat'))):
     classes[idx] = torch.from_numpy(scipy.io.loadmat(f, mat_dtype=True)['invariants'])
 logger.debug("Training sample invariants loaded.")
 
@@ -101,6 +95,8 @@ for x in np.arange(SPHERE_RADIUS, worm.shape[0] - SPHERE_RADIUS):
     pbar_y.close()
     pbar_x.update(1)
     # Save semi-result
-    torch.save(distance_result, 'distance_result.pt')
-    torch.save(distance_arg, 'distance_arg.pt')
+    torch.save(distance_result, f'{OUTPUT_NAME}_distance.pt')
+    torch.save(distance_arg, f'{OUTPUT_NAME}_argmin.pt')
 pbar_x.close()
+
+logger.debug("Calculation finished.")
