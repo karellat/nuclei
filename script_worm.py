@@ -4,7 +4,7 @@ import scipy.io
 from tqdm import tqdm
 import numpy as np
 from glob import glob
-from logguru import logger
+from loguru import logger
 import torch
 from PIL import Image
 from skimage import io
@@ -82,7 +82,7 @@ for x in np.arange(SPHERE_RADIUS, worm.shape[0] - SPHERE_RADIUS):
             cache_indicies[cache_idx, 0] = x
             cache_indicies[cache_idx, 1] = y
             cache_indicies[cache_idx, 2] = z
-            if cache_idx == BATCH_SIZE or z == (worm.shape[2] - SPHERE_RADIUS - 1):
+            if cache_idx == (BATCH_SIZE - 1) or z == (worm.shape[2] - SPHERE_RADIUS - 1):
                 invariant_out = model.calc_invariants(cache * sphere_mask, invariant_out)
                 distance = torch.cdist(invariant_out[:cache_idx+1], classes)
                 min_distance, argmin_distance = torch.min(distance, dim=-1)

@@ -1,4 +1,4 @@
-from logguru import logger
+from loguru import logger
 import numpy as np
 import torch
 from appell_polynomials_3D import appell_polynomials_recursive_3d, Appell_Type, Appell_polynomial_weights, \
