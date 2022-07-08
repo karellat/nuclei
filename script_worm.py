@@ -9,7 +9,7 @@ from appell_invariant import InvariantAppell
 from dataset import get_data
 
 # Config
-from config import BATCH_SIZE, MAX_RANK, SPHERE_RADIUS, APPELL_TYPE, APPELL_PARAM, APPELL_WEIGHT, SRZ, TYPES, INVARIANTS_NUM, PATH, PATH_CLASSES, OUTPUT_NAME
+from config import BATCH_SIZE, MAX_RANK, SPHERE_RADIUS, APPELL_TYPE, APPELL_PARAM, APPELL_WEIGHT, SRZ, TYPES, INVARIANTS_NUM, PATH, PATH_CLASSES, OUTPUT_NAME, SKIP_ZEROS
 
 # Setting
 assert torch.cuda.is_available()
@@ -69,10 +69,16 @@ for x in np.arange(SPHERE_RADIUS, worm.shape[0] - SPHERE_RADIUS):
     for y in np.arange(SPHERE_RADIUS, worm.shape[1] - SPHERE_RADIUS):
         cache_idx = 0
         for z in np.arange(SPHERE_RADIUS, worm.shape[2] - SPHERE_RADIUS):
-            cache[cache_idx] = (
-                worm[x - SPHERE_RADIUS:x + SPHERE_RADIUS + 1, y - SPHERE_RADIUS:y + SPHERE_RADIUS + 1,
-                z - SPHERE_RADIUS:z + SPHERE_RADIUS + 1]
-            )
+            cube = (
+                worm[x - SPHERE_RADIUS:x + SPHERE_RADIUS + 1,
+                     y - SPHERE_RADIUS:y + SPHERE_RADIUS + 1,
+                     z - SPHERE_RADIUS:z + SPHERE_RADIUS + 1]
+                   )
+            if SKIP_ZEROS and (torch.sum(cube) == 0):
+                distance_result[x, y, z] = -2
+                distance_arg[x, y, z] = -2
+                continue
+            cache[cache_idx] = cube
             cache_indicies[cache_idx, 0] = x
             cache_indicies[cache_idx, 1] = y
             cache_indicies[cache_idx, 2] = z

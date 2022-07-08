@@ -15,3 +15,4 @@ PATH = "data/c_elegans_nuclei/train/images/C18G1_2L1_1.tif"
 PATH_MASK = "data/c_elegans_nuclei/train/masks/C18G1_2L1_1.tif"
 PATH_CLASSES = "classes_17"
 OUTPUT_NAME = "result_17srz"
+SKIP_ZEROS = True
