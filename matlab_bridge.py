@@ -61,6 +61,10 @@ def matlab_readinv3dst(fname):
     return octave.readinv3dst(fname)
 
 
+def matlab_gauss_hermite_moments(img, rank, sigma=0.3, normcoef=0.5, normsize=1):
+    _add_matlab()
+    return octave.GauHerMom3Dnorm(img, rank, sigma, normcoef, normsize)
+
 def matlab_appell_polynomials_3d(m, n, o, x, y, z, t, s, w):
     '''
 

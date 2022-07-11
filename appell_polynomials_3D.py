@@ -3,7 +3,7 @@ import numpy as np
 from enum import Enum
 import torch
 from itertools import product
-
+from typing import Sequence
 
 class Appell_Type(Enum):
     U = 1
@@ -287,7 +287,11 @@ def cafmi3d_torch(moments: torch.Tensor,
                            inv_idx[..., 1],
                            inv_idx[..., 2]]
         out[:, idx] = torch.sum(torch.prod(products, dim=-2) * inv_coef, dim=-1)
+    # TODO: Move away
     # Normalization
     out = torch.sign(out) * (torch.abs(out) ** (1.0 / invariant_sizes))
     return out
+
+
+
 

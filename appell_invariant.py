@@ -22,12 +22,12 @@ class InvariantAppell:
         y = y.flatten(order='F')
         z = z.flatten(order='F')
 
-        self.polynomials = torch.from_numpy(
-            appell_polynomials_recursive_3d(rank, rank, rank,
-                                            x, y, z,
-                                            appell_type=appell_type,
-                                            s=appell_param,
-                                            weight=appell_weight)
+        _polynom = appell_polynomials_recursive_3d(rank, rank, rank,
+                                                   x, y, z,
+                                                   appell_type=appell_type,
+                                                   s=appell_param,
+                                                   weight=appell_weight)
+        self.polynomials = torch.from_numpy(_polynom
             .reshape((rank+1, rank+1, rank+1, img_srz, img_srz, img_srz), order='F')
             .reshape(rank+1, rank+1, rank+1, img_srz ** 3)
         ).to(device)

@@ -244,7 +244,7 @@ class Test(TestCase):
                                    np.squeeze(matlab_invariants))
                                  #  rtol=0.1e-05, atol=0.1e-07)
 
-    def test_pytorch_invarints(self):
+    def test_pytorch_invariants(self):
         appell_rank = 6
         appell_weight = Appell_polynomial_weights.WEIGHTED_4
         appell_type = Appell_Type.U
