@@ -9,12 +9,17 @@ from appell_invariant import InvariantAppell
 from dataset import get_data
 
 # Config
-from config import BATCH_SIZE, MAX_RANK, SPHERE_RADIUS, APPELL_TYPE, APPELL_PARAM, APPELL_WEIGHT, SRZ, TYPES, INVARIANTS_NUM, PATH, PATH_CLASSES, OUTPUT_NAME, SKIP_ZEROS
+from config import SKIP_ZEROS, SPHERE_RADIUS,BATCH_SIZE, model_type, SRZ, INVARIANTS_NUM, model_params,OUTPUT_NAME, PATH, PATH_CLASSES
+from invariant3d import Invariant3D
 
 # Setting
 assert torch.cuda.is_available()
 device = torch.device('cuda')
 logger.debug(f"Running on {device}")
+
+
+def _init_model(model, model_params, device) -> Invariant3D:
+    return model(**model_params, device=device)
 
 
 def get_sphere_mask(radius):
@@ -50,14 +55,7 @@ distance_arg = -1 * torch.ones([*worm.shape], dtype=torch.int64).to(device)
 
 
 # Invariants
-model = InvariantAppell(rank=MAX_RANK,
-                        appell_type=APPELL_TYPE,
-                        appell_weight=APPELL_WEIGHT,
-                        appell_param=APPELL_PARAM,
-                        invariants_num=INVARIANTS_NUM,
-                        types=TYPES,
-                        img_srz=SRZ,
-                        device=device)
+model = _init_model(model_type, model_params, device)
 
 
 logger.debug("Invariants calculation.")
@@ -83,7 +81,7 @@ for x in np.arange(SPHERE_RADIUS, worm.shape[0] - SPHERE_RADIUS):
             cache_indicies[cache_idx, 1] = y
             cache_indicies[cache_idx, 2] = z
             if cache_idx == (BATCH_SIZE - 1) or z == (worm.shape[2] - SPHERE_RADIUS - 1):
-                invariant_out = model.calc_invariants(cache * sphere_mask, invariant_out)
+                invariant_out = model.invariants(cache * sphere_mask, invariant_out)
                 distance = torch.cdist(invariant_out[:cache_idx+1], classes)
                 min_distance, argmin_distance = torch.min(distance, dim=-1)
                 distance_result[cache_indicies[:cache_idx+1, 0],

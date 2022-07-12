@@ -1,4 +1,4 @@
-function [MomArray,cx,cy,cz] = GauHerMom3Dnorm(im, or, sigma, normcoef, normsize)
+function [MomArray] = GauHerMom3Dnorm(im, or, sigma, normcoef)
 % [MomArray,cx,cy,cz] = GauHerMom3Dnorm(im, or, sigma, normcoef)
 % computes Gaussian Hermite moments of the 3D image im up to the order or
 % with standard deviation sigma.
@@ -20,63 +20,20 @@ end
 if nargin<4
     normcoef=0.5;
 end
-if nargin<5
-    normsize=1;
-end
 
 MomArray = zeros(or+1, or+1, or+1);
-% Extract the non-zero content and coordinate of the object
-%[x y z v] = Find3D(double(im));
-im=im-min(im(:));
 
-mim=max(im(:));
-if mim>0
-    im = im / mim;
-end
-indx=find(im(:));
-[x,y,z]=ind2sub(size(im),indx);
-v=im(indx);
+assert(min(im(:)) >= 0);
+assert(max(im(:)) <= 1);
+v = im(:);
 
 
-% Centroid shift
-cx = sum(x .* v) / sum(v);
-cy = sum(y .* v) / sum(v);
-cz = sum(z .* v) / sum(v);
-x = x' - cx;
-y = y' - cy;
-z = z' - cz;
+szm = max(size(im));
+[x,y,z]= meshgrid(linspace(-1,1,szm), linspace(-1,1,szm), linspace(-1,1,szm));
+x = x(:)' / sigma;
+y = y(:)' / sigma;
+z = z(:)' / sigma;
 
-% Mapping the coordinate x, y , z to [-1, 1]
-if normsize==1
-    dim = size(im);
-    sx = 2 / (dim(1)-1);
-    sy = 2 / (dim(2)-1);
-    sz = 2 / (dim(3)-1);
-elseif normsize==2
-    dim = size(im);
-    sx = 2 / (max(dim)-1);
-    sy = 2 / (max(dim)-1);
-    sz = 2 / (max(dim)-1);
-elseif normsize==3
-    rmax=max(sqrt(x.^2+y.^2+z.^2));
-    sx = 1 / rmax;
-    sy = 1 / rmax;
-    sz = 1 / rmax;
-elseif normsize==4
-    rmax=nthroot(sum(v),3);%*3/4/pi;%vych�z� to l�pe bez toho
-    sx = 1 / rmax;
-    sy = 1 / rmax;
-    sz = 1 / rmax;
-end
-% (x-xc)/sigma which x belongs to [-1,1]
-x = x * sx / sigma;
-y = y * sy / sigma;
-z = z * sz / sigma;
-clear im;
-
-% Nemuzu to tady otocit vzit souradnice mezi -1 a 1 a pak intezity posunout aby teziste bylo v 0.
-% Init to  all coordinates
-% Prvni souradnice rad,
 % kerx, kery, kerz
 kerx = zeros(or+1, length(x));
 kerx(1,:) = exp(-x.^2/2) / pi^0.25;
@@ -109,17 +66,17 @@ end
 clear z;
 
 
-size(kerx)
 
 for rx = 0 : or
     for ry = 0 : or-rx
         for rz = 0 : or-rx-ry
-             MomArray(rx+1, ry+1, rz+1) = sum(kerx(rx+1,:) .* kery(ry+1,:) .* kerz(rz+1,:) .* v')...
+             MomArray(rx+1, ry+1, rz+1) = sum(kerx(rx+1,:) .* kery(ry+1,:) .* kerz(rz+1,:) .* v') ...
                  *exp(gammaln(rx+1)+gammaln(ry+1)+gammaln(rz+1)-gammaln(rx+ry+rz+1)*normcoef/2-gammaln((rx+ry+rz)/2+1)*(1-normcoef));
 %             *factorial(rx)*factorial(ry)*factorial(rz)/(factorialhalf(rx+ry+rz)^normcoef*factorialhalf((rx+ry+rz)/2)^(1-normcoef))^0.5;
-        end 
+        end
     end
 end
-MomArray = MomArray * sx * sy * sz;
 
+% Normalizace
+MomArray = MomArray * (2.0 / szm) ^ 3;
 clear kerx kery kerz v;

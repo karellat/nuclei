@@ -4,9 +4,11 @@ from unittest import TestCase
 from numpy.testing import assert_allclose
 from matlab_bridge import get_images
 
-from invariant3d import AppellInvariant3D, Invariant3D, GauseHermiteInvariants3D
+from invariant3d import AppellInvariant3D, Invariant3D, GaussHermiteInvariants3D
 from appell_polynomials_3D import Appell_Type, Appell_polynomial_weights
 
+#TODO: Remove
+from matlab_bridge import matlab_gauss_hermite_moments
 MAX_RANK = 6
 SPHERE_RADIUS = 20
 SRZ = 2 * SPHERE_RADIUS + 1
@@ -27,21 +29,22 @@ def _test_polynomials(model: Invariant3D):
     python_polynomials = model.polynomials.cpu().numpy()
     rank_size = model.max_rank + 1
     srz = model.cube_side
-    matlab_polynomials = (
-        model._get_matlab_polynomials()
-        .reshape((rank_size, rank_size, rank_size,
-                  srz, srz, srz), order='F')
-        .reshape(rank_size, rank_size, rank_size, srz ** 3, order='C')
-    )
-    assert_allclose(python_polynomials,
-                    matlab_polynomials)
+    matlab_polynomials = (model._get_matlab_polynomials()
+                          .reshape((rank_size, rank_size, rank_size, srz, srz, srz), order='F')
+                          .reshape((rank_size, rank_size, rank_size, srz**3), order='C')
+                          )
+    assert_allclose(np.squeeze(python_polynomials),
+                    np.squeeze(matlab_polynomials),
+                    rtol=1e-15,
+                    atol=1e-15)
 
 
 def _test_moments(model: Invariant3D):
     images = _torch_images()
+    python_moments = model.get_moments(images).cpu().numpy()
     matlab_moments = model._get_matlab_moments(images)
-    assert_allclose(model.get_moments(images).cpu().numpy(),
-                   matlab_moments)
+    assert_allclose(python_moments,
+                    matlab_moments)
 
 
 def _test_invariants(model: Invariant3D):
@@ -66,9 +69,9 @@ def _test_appell(_test_fnc):
 
 
 def _test_gauss_hermite(_test_fnc):
-    model = GauseHermiteInvariants3D(sigma=0.3,
-                                     normcoef=0,
-                                     normsize=1,
+    model = GaussHermiteInvariants3D(types=TYPES,
+                                     sigma=0.3,
+                                     normcoef=0.5,
                                      num_invariants=NUM_INVARIANTS,
                                      cube_side=SRZ,
                                      max_rank=MAX_RANK,
@@ -88,5 +91,11 @@ class TestAppellInvariant(TestCase):
 
 
 class TestGaussHermiteInvariants3D(TestCase):
+    def test_polynomials(self):
+        _test_gauss_hermite(_test_polynomials)
+
     def test_moments(self):
         _test_gauss_hermite(_test_moments)
+
+    def test_invariants(self):
+        _test_gauss_hermite(_test_invariants)

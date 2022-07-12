@@ -6,7 +6,9 @@ from appell_invariant import InvariantAppell
 import scipy.io
 from dataset import get_mask, get_data
 
-from config import MAX_RANK, SPHERE_RADIUS, APPELL_TYPE, APPELL_PARAM, APPELL_WEIGHT, SRZ, TYPES, INVARIANTS_NUM, MASK_NUM, PATH, PATH_MASK, PATH_CLASSES
+from config import MAX_RANK, SPHERE_RADIUS, model_type, SRZ, INVARIANTS_NUM, model_params, MASK_NUM, PATH, PATH_MASK, \
+    PATH_CLASSES
+from invariant3d import Invariant3D
 
 # Setting
 DEBUG = False
@@ -14,24 +16,23 @@ assert torch.cuda.is_available()
 device = torch.device('cuda')
 if DEBUG:
     from matlab_bridge import matlab_image_to_invariants
+
     logger.debug("Debug mode")
+
+
+def _init_model(model, model_params, device) -> Invariant3D:
+    return model(**model_params, device=device)
+
 
 numpy_worm = get_data(PATH)
 numpy_masks = get_mask(PATH_MASK)
 
 mask_indicies = np.unique(numpy_masks)
 mask_indicies = mask_indicies[np.linspace(10,
-                                          mask_indicies.shape[0]-10,
-                                          MASK_NUM-2).astype(int)]
+                                          mask_indicies.shape[0] - 10,
+                                          MASK_NUM - 2).astype(int)]
 
-model = InvariantAppell(rank=MAX_RANK,
-                        appell_type=APPELL_TYPE,
-                        appell_weight=APPELL_WEIGHT,
-                        appell_param=APPELL_PARAM,
-                        invariants_num=INVARIANTS_NUM,
-                        types=TYPES,
-                        img_srz=SRZ,
-                        device=device)
+model = _init_model(model_type, model_params, device)
 
 # TODO: Remove training samples
 for mask_idx in mask_indicies:
@@ -47,32 +48,21 @@ for mask_idx in mask_indicies:
                             cz - SPHERE_RADIUS:cz + SPHERE_RADIUS + 1]).to(device)
     np.testing.assert_allclose(torch.sum(cube).cpu(), np.sum(masked))
     invariants = torch.zeros((1, INVARIANTS_NUM)).to(device)
-    invariants = model.calc_invariants(cube.reshape((1, SRZ, SRZ, SRZ)), invariants)
-    if DEBUG:
-        matlab_invariant = matlab_image_to_invariants(img=cube.cpu().numpy(),
-                                                      srz=SRZ,
-                                                      types=TYPES,
-                                                      appell_type=APPELL_TYPE,
-                                                      appell_param=APPELL_PARAM,
-                                                      appell_rank=MAX_RANK,
-                                                      appell_weight=APPELL_WEIGHT
-                                                      )
-        np.testing.assert_allclose(matlab_invariant, invariants.cpu().numpy())
+    invariants = model.invariants(images=cube.reshape((1, SRZ, SRZ, SRZ)),
+                                  out=invariants)
+
+    if not os.path.exists(PATH_CLASSES):
+        os.mkdir(PATH_CLASSES)
 
     scipy.io.savemat(os.path.join(PATH_CLASSES, f'nuclei_{mask_idx}.mat'),
-                     dict(file=PATH,
+                     dict(model=model_type.__name__,
+                          **model_params,
+                          file=PATH,
                           mask_file=PATH_MASK,
                           rank=MAX_RANK,
-                          appell_type=APPELL_TYPE,
-                          appell_weight=APPELL_WEIGHT,
-                          appell_param=APPELL_PARAM,
-                          invariants_num=INVARIANTS_NUM,
-                          types=TYPES,
-                          img_srz=SRZ,
                           mask_idx=mask_idx,
                           cube=cube.cpu().numpy(),
                           invariants=invariants.cpu().numpy(),
                           tx=cx,
                           ty=cy,
                           tz=cz))
-
