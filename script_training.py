@@ -39,9 +39,13 @@ for mask_idx in mask_indicies:
     mask = numpy_masks == mask_idx
     masked = numpy_worm * mask
     x, y, z = np.where(mask)
-    cx = np.mean(x).astype(int)
-    cy = np.mean(y).astype(int)
-    cz = np.mean(z).astype(int)
+    m000 = np.sum(masked)
+    m100 = np.sum(x * masked[x, y, z])
+    m010 = np.sum(y * masked[x, y, z])
+    m001 = np.sum(z * masked[x, y, z])
+    cx = int(m100 / m000)
+    cy = int(m010 / m000)
+    cz = int(m001 / m000)
     cube = torch.from_numpy(masked[
                             cx - SPHERE_RADIUS:cx + SPHERE_RADIUS + 1,
                             cy - SPHERE_RADIUS:cy + SPHERE_RADIUS + 1,
