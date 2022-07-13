@@ -15,13 +15,14 @@ SKIP_ZEROS = True
 INVARIANTS_NUM = 77
 SRZ = SPHERE_RADIUS * 2 + 1
 # Model
-model_type = GaussHermiteInvariants3D
+model_type = AppellInvariant3D
 # Parameters
-model_params = dict( 
-      types=0,
-      sigma=0.3,
-      normcoef=0.5,
-      num_invariants=INVARIANTS_NUM,
-      cube_side=SRZ,
-      max_rank=MAX_RANK
+model_params = dict(
+    appell_type=Appell_Type.U,
+    appell_weight=Appell_polynomial_weights.WEIGHTED_5,
+    appell_parameter_s=1,
+    appell_type_s=0,
+    num_invariants=INVARIANTS_NUM,
+    cube_side=SRZ,
+    max_rank=MAX_RANK,
 )
