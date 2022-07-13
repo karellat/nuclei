@@ -7,7 +7,7 @@ import scipy.io
 from dataset import get_mask, get_data
 
 from config import MAX_RANK, SPHERE_RADIUS, model_type, SRZ, INVARIANTS_NUM, model_params, MASK_NUM, PATH, PATH_MASK, \
-    PATH_CLASSES
+    PATH_CLASSES, NAME
 from invariant3d import Invariant3D
 
 # Setting
@@ -55,10 +55,10 @@ for mask_idx in mask_indicies:
     invariants = model.invariants(images=cube.reshape((1, SRZ, SRZ, SRZ)),
                                   out=invariants)
 
-    if not os.path.exists(PATH_CLASSES):
-        os.mkdir(PATH_CLASSES)
+    _output_dir = os.path.join('results', NAME, PATH_CLASSES)
+    os.makedirs(_output_dir, exist_ok=True)
 
-    scipy.io.savemat(os.path.join(PATH_CLASSES, f'nuclei_{mask_idx}.mat'),
+    scipy.io.savemat(os.path.join(_output_dir, f'nuclei_{mask_idx}.mat'),
                      dict(model=model_type.__name__,
                           **model_params,
                           file=PATH,

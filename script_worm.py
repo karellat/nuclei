@@ -1,3 +1,5 @@
+from zipfile import ZipFile
+from scipy.io import savemat
 import scipy.io
 from tqdm import tqdm
 import numpy as np
@@ -5,11 +7,10 @@ from glob import glob
 from loguru import logger
 import os
 import torch
-from appell_invariant import InvariantAppell
 from dataset import get_data
 
 # Config
-from config import SKIP_ZEROS, SPHERE_RADIUS,BATCH_SIZE, model_type, SRZ, INVARIANTS_NUM, model_params,OUTPUT_NAME, PATH, PATH_CLASSES
+from config import SKIP_ZEROS, SPHERE_RADIUS, NAME, BATCH_SIZE, model_type, SRZ, INVARIANTS_NUM, model_params,OUTPUT_NAME, PATH, PATH_CLASSES
 from invariant3d import Invariant3D
 
 # Setting
@@ -99,8 +100,26 @@ for x in np.arange(SPHERE_RADIUS, worm.shape[0] - SPHERE_RADIUS):
     pbar_y.close()
     pbar_x.update(1)
     # Save semi-result
-    torch.save(distance_result, f'{OUTPUT_NAME}_distance.pt')
-    torch.save(distance_arg, f'{OUTPUT_NAME}_argmin.pt')
+    _output_dir = os.path.join('results', NAME)
+    torch.save(distance_result, os.path.join(_output_dir, f'{OUTPUT_NAME}_distance.pt'))
+    torch.save(distance_arg, os.path.join(_output_dir, f'{OUTPUT_NAME}_argmin.pt'))
 pbar_x.close()
 
+
 logger.debug("Calculation finished.")
+# Writing output
+distances = torch.load(os.path.join('results', NAME, f'result_{NAME}_distance.pt'),
+                       map_location=torch.device('cpu'))
+indexes = torch.load(os.path.join('results', NAME, f'result_{NAME}_argmin.pt'),
+                     map_location=torch.device('cpu'))
+
+matfile_path = f'results/{NAME}/results_{NAME}.mat'
+savemat(matfile_path, dict(minimal_distances=distances.numpy(),
+                           argmin_distances=indexes.numpy()))
+
+matfile_paths = [*glob(os.path.join('results', NAME, PATH_CLASSES, '*'))]
+
+with ZipFile(os.path.join('results', NAME, f'result_{NAME}.zip'), 'w') as zip_file:
+    zip_file.write(matfile_path, arcname=f'results_{NAME}.mat')
+    for file in matfile_paths:
+        zip_file.write(file, arcname=f'{PATH_CLASSES}/{os.path.basename(file)}')
