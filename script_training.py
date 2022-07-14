@@ -6,7 +6,7 @@ from appell_invariant import InvariantAppell
 import scipy.io
 from dataset import get_mask, get_data
 
-from config import MAX_RANK, SPHERE_RADIUS, model_type, SRZ, INVARIANTS_NUM, model_params, MASK_NUM, PATH, PATH_MASK, \
+from config import MAX_RANK, SPHERE_RADIUS, model_type, CM, SRZ, INVARIANTS_NUM, model_params, MASK_IDS, PATH, PATH_MASK, \
     PATH_CLASSES, NAME
 from invariant3d import Invariant3D
 
@@ -27,15 +27,11 @@ def _init_model(model, model_params, device) -> Invariant3D:
 numpy_worm = get_data(PATH)
 numpy_masks = get_mask(PATH_MASK)
 
-mask_indicies = np.unique(numpy_masks)
-mask_indicies = mask_indicies[np.linspace(10,
-                                          mask_indicies.shape[0] - 10,
-                                          MASK_NUM - 2).astype(int)]
-
 model = _init_model(model_type, model_params, device)
 
-# TODO: Remove training samples
-for mask_idx in mask_indicies:
+logger.debug(f"Preparing training set, CM method: {CM}")
+for mask_idx in MASK_IDS:
+    logger.debug(f"Calculating idx: {mask_idx}")
     mask = numpy_masks == mask_idx
     masked = numpy_worm * mask
     x, y, z = np.where(mask)
@@ -43,9 +39,23 @@ for mask_idx in mask_indicies:
     m100 = np.sum(x * masked[x, y, z])
     m010 = np.sum(y * masked[x, y, z])
     m001 = np.sum(z * masked[x, y, z])
-    cx = int(m100 / m000)
-    cy = int(m010 / m000)
-    cz = int(m001 / m000)
+    cx_image = int(m100 / m000)
+    cy_image = int(m010 / m000)
+    cz_image = int(m001 / m000)
+    cx_mask = np.mean(x).astype(int)
+    cy_mask = np.mean(y).astype(int)
+    cz_mask = np.mean(z).astype(int)
+    if CM.upper() == "IMAGE":
+        cx = cx_image
+        cy = cy_image
+        cz = cz_image
+    elif CM.upper() == "MASK":
+        cx = cx_mask
+        cy = cy_mask
+        cz = cz_mask
+    else:
+        raise NotImplementedError("Unknown method form calculating center of mass.")
+    logger.debug(f"\t center of mass: {(cx,cy,cz)}; difference between methods {(cx_image-cx_mask, cy_image - cy_mask, cz_image - cz_mask)}.")
     cube = torch.from_numpy(masked[
                             cx - SPHERE_RADIUS:cx + SPHERE_RADIUS + 1,
                             cy - SPHERE_RADIUS:cy + SPHERE_RADIUS + 1,
@@ -58,7 +68,8 @@ for mask_idx in mask_indicies:
     _output_dir = os.path.join('results', NAME, PATH_CLASSES)
     os.makedirs(_output_dir, exist_ok=True)
 
-    scipy.io.savemat(os.path.join(_output_dir, f'nuclei_{mask_idx}.mat'),
+    _path = os.path.join(_output_dir, f'nuclei_{mask_idx}.mat')
+    scipy.io.savemat(_path,
                      dict(model=model_type.__name__,
                           **model_params,
                           file=PATH,
@@ -70,3 +81,4 @@ for mask_idx in mask_indicies:
                           tx=cx,
                           ty=cy,
                           tz=cz))
+    logger.debug(f"\tSaving as {_path}.")
