@@ -22,8 +22,8 @@ SRZ = SPHERE_RADIUS * 2 + 1
 model_type = AppellInvariant3D
 # Parameters
 model_params = dict(
-    appell_type=Appell_Type.U.name,
-    appell_weight=Appell_polynomial_weights.WEIGHTED_5.name,
+    appell_type=Appell_Type.U,
+    appell_weight=Appell_polynomial_weights.WEIGHTED_5,
     appell_parameter_s=1,
     appell_type_s=0,
     num_invariants=INVARIANTS_NUM,
