@@ -11,13 +11,10 @@ from config import MAX_RANK, SPHERE_RADIUS, model_type, CM, SRZ, INVARIANTS_NUM,
 from invariant3d import Invariant3D
 
 # Setting
-DEBUG = False
 assert torch.cuda.is_available()
 device = torch.device('cuda')
-if DEBUG:
-    from matlab_bridge import matlab_image_to_invariants
 
-    logger.debug("Debug mode")
+logger.debug("Debug mode")
 
 
 def _init_model(model, model_params, device) -> Invariant3D:

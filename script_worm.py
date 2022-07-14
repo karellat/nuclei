@@ -10,7 +10,7 @@ import torch
 from dataset import get_data
 
 # Config
-from config import SKIP_ZEROS, SPHERE_RADIUS, NAME, BATCH_SIZE, model_type, SRZ, INVARIANTS_NUM, model_params,OUTPUT_NAME, PATH, PATH_CLASSES
+from config import SKIP_ZEROS, MASK_IDS, SPHERE_RADIUS, NAME, BATCH_SIZE, model_type, SRZ, INVARIANTS_NUM, model_params,OUTPUT_NAME, PATH, PATH_CLASSES
 from invariant3d import Invariant3D
 
 # Setting
@@ -37,12 +37,20 @@ def get_sphere_mask(radius):
 
 numpy_worm = get_data(PATH)
 
-# Load training set
+# Invariants
+model = _init_model(model_type, model_params, device)
+logger.debug("Model initialized.")
 
+# Load training set
 classes = torch.zeros([10, 77], dtype=torch.float64).to(device)
 
-for idx, f in enumerate(glob(os.path.join(PATH_CLASSES, '*.mat'))):
-    classes[idx] = torch.from_numpy(scipy.io.loadmat(f, mat_dtype=True)['invariants'])
+_training_files = glob(os.path.join('results', NAME, PATH_CLASSES, '*.mat'))
+assert len(_training_files) == len(MASK_IDS)
+for idx, f in enumerate(_training_files):
+    logger.debug(f"\tLoading {idx}. sample from {f}")
+    mat_file = scipy.io.loadmat(f, mat_dtype=True)
+    assert mat_file['cube_side'] == model.cube_side
+    classes[idx] = torch.from_numpy(mat_file['invariants'])
 logger.debug("Training sample invariants loaded.")
 
 # Prepare Data
@@ -54,9 +62,6 @@ logger.debug("Data prepared.")
 distance_result = -1 * torch.ones([*worm.shape], dtype=torch.float64).to(device)
 distance_arg = -1 * torch.ones([*worm.shape], dtype=torch.int64).to(device)
 
-
-# Invariants
-model = _init_model(model_type, model_params, device)
 
 
 logger.debug("Invariants calculation.")
