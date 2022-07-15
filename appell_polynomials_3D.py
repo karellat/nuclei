@@ -292,6 +292,3 @@ def cafmi3d_torch(moments: torch.Tensor,
     out = torch.sign(out) * (torch.abs(out) ** (1.0 / invariant_sizes))
     return out
 
-
-
-

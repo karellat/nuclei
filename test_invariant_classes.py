@@ -4,11 +4,12 @@ from unittest import TestCase
 from numpy.testing import assert_allclose
 from matlab_bridge import get_images
 
-from invariant3d import AppellInvariant3D, Invariant3D, GaussHermiteInvariants3D
+from invariant3d import AppellInvariant3D, Invariant3D, GaussHermiteInvariants3D, ZernikeInvariants3D
 from appell_polynomials_3D import Appell_Type, Appell_polynomial_weights
 
-#TODO: Remove
+# TODO: Remove
 from matlab_bridge import matlab_gauss_hermite_moments
+
 MAX_RANK = 6
 SPHERE_RADIUS = 20
 SRZ = 2 * SPHERE_RADIUS + 1
@@ -27,16 +28,14 @@ def _torch_images():
 
 def _test_polynomials(model: Invariant3D):
     python_polynomials = model.polynomials.cpu().numpy()
-    rank_size = model.max_rank + 1
     srz = model.cube_side
     matlab_polynomials = (model._get_matlab_polynomials()
-                          .reshape((rank_size, rank_size, rank_size, srz, srz, srz), order='F')
-                          .reshape((rank_size, rank_size, rank_size, srz**3), order='C')
+                          .reshape((*model.get_polynomial_shape(), srz, srz, srz), order='F')
+                          .reshape((*model.get_polynomial_shape(), srz ** 3), order='C')
                           )
     assert_allclose(np.squeeze(python_polynomials),
                     np.squeeze(matlab_polynomials),
-                    rtol=1e-15,
-                    atol=1e-15)
+                    rtol=1e-12, atol=1e-12)
 
 
 def _test_moments(model: Invariant3D):
@@ -50,8 +49,9 @@ def _test_moments(model: Invariant3D):
 def _test_invariants(model: Invariant3D):
     images = _torch_images()
     out = torch.zeros(([images.shape[0], model.num_invariants]), dtype=torch.float64).to(torch.device(DEVICE))
+    matlab_invariants = model._get_matlab_invariants(images)
     assert_allclose(model.invariants(images, out=out).cpu().numpy(),
-                    model._get_matlab_invariants(images))
+                    matlab_invariants)
 
 
 def _test_appell(_test_fnc):
@@ -79,6 +79,15 @@ def _test_gauss_hermite(_test_fnc):
     _test_fnc(model)
 
 
+def _test_zernike(_test_fnc):
+    model = ZernikeInvariants3D(types=TYPES,
+                                num_invariants=NUM_INVARIANTS,
+                                cube_side=SRZ,
+                                max_rank=MAX_RANK,
+                                device=torch.device(DEVICE))
+    _test_fnc(model)
+
+
 class TestAppellInvariant(TestCase):
     def test_polynomials(self):
         _test_appell(_test_polynomials)
@@ -99,3 +108,14 @@ class TestGaussHermiteInvariants3D(TestCase):
 
     def test_invariants(self):
         _test_gauss_hermite(_test_invariants)
+
+
+class TestZernikeInvariants3D(TestCase):
+    def test_polynomials(self):
+        _test_zernike(_test_polynomials)
+
+    def test_moments(self):
+        _test_zernike(_test_moments)
+
+    def test_invariants(self):
+        _test_zernike(_test_invariants)

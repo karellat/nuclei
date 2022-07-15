@@ -1,7 +1,5 @@
 function [poly] = zm3dpoly(szm, rank)
 
-
-
 [x,y,z]= meshgrid(linspace(-1,1,szm), linspace(-1,1,szm), linspace(-1,1,szm));
 x = x(:)';
 y = y(:)';
@@ -9,7 +7,10 @@ z = z(:)';
 
 % Spherical coordinates
 r=sqrt(x.^2+y.^2+z.^2);
+% set middle point to zero angle
 theta=acos(z./r);
+assert(sum(isnan(theta)) == 1);
+theta(isnan(theta)) = 0;
 phi=atan2(y,x);
 
 %Kintner method
@@ -37,7 +38,4 @@ for el=0:rank  %latitudinal repetition
         end
     end
 end
-
-
 end
-

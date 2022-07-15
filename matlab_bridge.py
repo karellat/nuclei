@@ -71,6 +71,16 @@ def matlab_gauss_hermite_moments(img, rank, sigma, normcoef):
     return octave.GauHerMom3Dnorm(img, rank, sigma, normcoef)
 
 
+def matlab_zernike_polynomials(szm, rank): 
+    _add_matlab()
+    return octave.zm3dpoly(szm, rank)
+
+
+def matlab_zernike_moments(img, rank):
+    _add_matlab()
+    return octave.zm3dmoments(img, rank)
+
+
 def matlab_appell_polynomials_3d(m, n, o, x, y, z, t, s, w):
     '''
 
@@ -127,3 +137,17 @@ def matlab_appell_polynomials_recursive_3d(m, n, o, x, y, z, t, s, w):
     return octave.Appell_poly_univ3Drecursive(m, n, o,
                                               x, y, z,
                                               t, s, w)
+
+
+def matlab_sphere_harmonic(n, m, theta, phi):
+    _add_matlab()
+    return octave.spherical_harmonic(n, m, theta, phi)
+
+
+def matlab_cafmi3dcomplex(f, moments, types, typeg):
+    _add_matlab()
+    return octave.cafmi3dcomplex(f,
+                                 moments,
+                                 types,
+                                 typeg)
+

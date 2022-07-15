@@ -1,5 +1,6 @@
 import time
 from matlab_bridge import *
+from scipy.special import sph_harm
 import torch
 from glob import glob
 import numpy as np
@@ -8,13 +9,12 @@ from appell_polynomials_3D import appell_polynomials_recursive_3d, appell_polyno
     Appell_polynomial_weights, appell_moments_3d_predef, cafmi3d, moments_volume_normalization, \
     get_all_appell_polynomials_3d, cafmi3d_torch
 from appell_invariant import InvariantAppell
+from invariant3d import ZernikeInvariants3D
 
 MATLAB_ROOT_DIR = '.'
 MAX_RANK = 6
 SPHERE_RADIUS = 20
 APPELL_PARAMETER_S = 1
-
-
 
 
 class Test(TestCase):
@@ -31,18 +31,19 @@ class Test(TestCase):
                 y = y.flatten(order='F')[:, np.newaxis]
                 z = z.flatten(order='F')[:, np.newaxis]
                 for ord in range(MAX_RANK + 1):
-                    for p in range(ord+1):
-                        for q in range(ord-p+1):
+                    for p in range(ord + 1):
+                        for q in range(ord - p + 1):
                             r = ord - p - q
                             polynomial[p, q, r] = matlab_appell_polynomials_3d(p, q, r,
-                                                                       x, y, z,
-                                                                       t.value, APPELL_PARAMETER_S, w.value).flatten(order='F')
+                                                                               x, y, z,
+                                                                               t.value, APPELL_PARAMETER_S,
+                                                                               w.value).flatten(order='F')
 
                 recursive = matlab_appell_polynomials_recursive_3d(MAX_RANK, MAX_RANK, MAX_RANK,
                                                                    x, y, z,
                                                                    t.value, APPELL_PARAMETER_S, w.value)
                 np.testing.assert_allclose(polynomial, recursive,
-                                           err_msg=f"Type {t}, weights {w}",)
+                                           err_msg=f"Type {t}, weights {w}", )
 
     def test_appell_polynomials_3d(self):
         for t in Appell_Type:
@@ -106,11 +107,11 @@ class Test(TestCase):
             np.squeeze(pochham(-1, 2 * 1)),
             np.squeeze(matlab_pochham(-1, 2 * 1)))
 
-#    def test_load_rot3d(self):
-# TODO: Fix no end reading
-#        _path = '/home/karellat/PycharmProjects/nuclei/matlab/rot3Dinv10indep.txt'
-#        f = matlab_readinv3dst(_path)
-#        np.savez_compressed("rot3Dinv10indep.npz", coef=f.coef, ind=f.ind)
+    #    def test_load_rot3d(self):
+    # TODO: Fix no end reading
+    #        _path = '/home/karellat/PycharmProjects/nuclei/matlab/rot3Dinv10indep.txt'
+    #        f = matlab_readinv3dst(_path)
+    #        np.savez_compressed("rot3Dinv10indep.npz", coef=f.coef, ind=f.ind)
 
     def test_appell_moments(self):
         appell_rank = 6
@@ -210,10 +211,8 @@ class Test(TestCase):
         invariant_coef = [torch.from_numpy(coef.astype(np.float64)) for coef in invariant_coef]
         invariant_sizes = torch.from_numpy(invariant_sizes)
 
-
         if types > 0:
             python_moments = moments_volume_normalization(python_moments, types)
-
 
         for idx in range(python_moments.shape[0]):
             moments = python_moments[idx].clone()
@@ -242,7 +241,7 @@ class Test(TestCase):
 
         np.testing.assert_allclose(python_invariants,
                                    np.squeeze(matlab_invariants))
-                                 #  rtol=0.1e-05, atol=0.1e-07)
+        #  rtol=0.1e-05, atol=0.1e-07)
 
     def test_pytorch_invariants(self):
         appell_rank = 6
@@ -281,7 +280,6 @@ class Test(TestCase):
             matlab_moments[idx] = matlab_appell_moments_3D_predef(img.astype(np.float64), matlab_polynomials,
                                                                   appell_rank, appell_rank, appell_rank)
 
-
         matlab_invariants = np.zeros((4, 77))
 
         # Matlab paramaters
@@ -312,3 +310,17 @@ class Test(TestCase):
 
         np.testing.assert_allclose(python_invariants.cpu().numpy(),
                                    np.squeeze(matlab_invariants))
+
+    def test_sphere_harmonics(self):
+        for n in range(0, 20):
+            for m in range(-n, n):
+                for theta in np.linspace(0, 2 * np.pi, 10):
+                    for phi in np.linspace(0, np.pi, 10):
+                        matlab_harmonics = matlab_sphere_harmonic(n=n, m=m, theta=theta, phi=phi)
+                        scipy_harmonics = ZernikeInvariants3D.sphere_harmonics(m=m, n=n, phi=theta, theta=phi)
+                        np.testing.assert_allclose(matlab_harmonics, scipy_harmonics,
+                                                   err_msg=f"n = {n}; m = {m}; theta = {theta}, phi = {phi}",
+                                                   rtol=1e-15,
+                                                   atol=1e-15)
+
+

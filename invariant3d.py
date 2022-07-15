@@ -1,16 +1,20 @@
 from typing import Tuple, Sequence
 import numpy as np
 import torch
+from scipy.special import sph_harm
 from abc import ABC, abstractmethod
 from appell_polynomials_3D import appell_polynomials_recursive_3d, Appell_Type, \
     Appell_polynomial_weights, moments_volume_normalization
 # Appell
 from matlab_bridge import matlab_appell_polynomials_recursive_3d, matlab_appell_moments_3D_predef, matlab_cafmi3dst
 # Gauss-Hermite
-from matlab_bridge import matlab_gauss_hermite_moments, matlab_gauss_hermite_polynoms
+from matlab_bridge import matlab_gauss_hermite_moments, matlab_gauss_hermite_polynoms, matlab_zernike_moments
 from scipy.special import gammaln
+# Zernike
+from matlab_bridge import matlab_zernike_polynomials, matlab_cafmi3dcomplex, matlab_readinv3dst
 
-#TODO: Doc
+
+# TODO: Doc
 
 
 class Invariant3D(ABC):
@@ -26,9 +30,9 @@ class Invariant3D(ABC):
             self.init_polynomials()
         ).to(device)
         assert self.polynomials.ndim == 4, "Expecting shape [rank, rank, rank, x*y*z (flatten='C')]"
-        assert self.polynomials.shape[0] == self.max_rank + 1
-        assert self.polynomials.shape[1] == self.max_rank + 1
-        assert self.polynomials.shape[2] == self.max_rank + 1
+        assert self.polynomials.shape[0] == self.get_polynomial_shape()[0]
+        assert self.polynomials.shape[1] == self.get_polynomial_shape()[1]
+        assert self.polynomials.shape[2] == self.get_polynomial_shape()[2]
         assert self.polynomials.shape[3] == self.cube_side ** 3
         self.invariants_ind, self.invariants_coef = self.init_moments2invariants()
         # Move to device
@@ -36,7 +40,8 @@ class Invariant3D(ABC):
         self.invariants_coef = [x.to(device) for x in self.invariants_coef]
 
         # TODO: assert invariants
-        assert self.invariants_ind[0].ndim == 3
+        # TODO: Uncomment
+        # assert self.invariants_ind[0].ndim == 3
 
     def get_moments(self, images: torch.Tensor) -> torch.Tensor:
         assert images.ndim == 4, "Expecting shape [batch_size, x*y*z (flatten='C')]"
@@ -61,6 +66,10 @@ class Invariant3D(ABC):
 
     def image_size(self) -> int:
         return self.cube_side ** 3
+
+    @abstractmethod
+    def get_polynomial_shape(self):
+        pass
 
     @abstractmethod
     def init_moments2invariants(self) -> Tuple[Sequence[torch.Tensor], Sequence[torch.Tensor]]:
@@ -107,8 +116,11 @@ class Invariant3D(ABC):
             products = moments[:,
                                inv_idx[..., 0],
                                inv_idx[..., 1],
-                               inv_idx[..., 2]]
-            out[:, idx] = torch.sum(torch.prod(products, dim=-2) * inv_coef, dim=-1)
+                               inv_idx[..., 2]
+                       ]
+            out[:, idx] = torch.real(
+                torch.sum(torch.prod(products, dim=-2) * inv_coef, dim=-1)
+            )
 
         # TODO: post_invariant normalization
         return self.normalization_invariants(out)
@@ -117,6 +129,7 @@ class Invariant3D(ABC):
 class CafmidstInvariant3D(Invariant3D):
 
     def __init__(self, types: int, num_invariants: int, cube_side: int, max_rank: int, device: torch.device):
+        self._polynomial_shape = (max_rank + 1, max_rank + 1, max_rank + 1)
         super().__init__(num_invariants, cube_side, max_rank, device)
         self.types = types
         self.param_v = torch.tensor(2 + (types % 2) if types > 0 else 3,
@@ -143,6 +156,9 @@ class CafmidstInvariant3D(Invariant3D):
     @abstractmethod
     def _get_matlab_moments(self, images: torch.Tensor) -> np.ndarray:
         pass
+
+    def get_polynomial_shape(self):
+        return self._polynomial_shape
 
     def init_moments2invariants(self) -> Tuple[Sequence[torch.Tensor], Sequence[torch.Tensor]]:
         moments2invariants = np.load("torch_invariants3Dinv10/moments2invariants.npz",
@@ -231,29 +247,14 @@ class AppellInvariant3D(CafmidstInvariant3D):
                       srz ** 3))
         )
 
-    def init_moments2invariants(self) -> Tuple[Sequence[torch.Tensor], Sequence[torch.Tensor]]:
-        moments2invariants = np.load("torch_invariants3Dinv10/moments2invariants.npz",
-                                     allow_pickle=True)
-        invariant_ind = list(moments2invariants['ind'][0][:self.num_invariants])
-        invariant_coef = list(moments2invariants['coef'][0][0][:self.num_invariants])
-
-        # Test uint8
-        for ind in invariant_ind:
-            assert np.max(ind) <= 255
-
-        # Convert to Tensor
-        invariant_coef = [torch.from_numpy(np.array(coef, dtype=np.float64)) for coef in invariant_coef]
-        invariant_ind = [torch.from_numpy(ind.astype(int)) for ind in invariant_ind]
-        return invariant_ind, invariant_coef
-
     def _get_matlab_polynomials(self) -> np.ndarray:
         x, y, z = self.get_coords(lower=-1, upper=1, order='F')
         return (
             matlab_appell_polynomials_recursive_3d(self.max_rank, self.max_rank, self.max_rank,
-                                                      x, y, z,
-                                                      self.appell_type.value,
-                                                      self.appell_parameter_s,
-                                                      self.appell_weight.value)
+                                                   x, y, z,
+                                                   self.appell_type.value,
+                                                   self.appell_parameter_s,
+                                                   self.appell_weight.value)
             .reshape((self.max_rank + 1, self.max_rank + 1, self.max_rank + 1,
                       self.cube_side, self.cube_side, self.cube_side), order='F')
         )
@@ -292,11 +293,12 @@ class GaussHermiteInvariants3D(CafmidstInvariant3D):
                          cube_side=cube_side,
                          max_rank=max_rank,
                          device=device)
-        _weights = np.zeros((self.max_rank+1, self.max_rank+1, self.max_rank+1), dtype=np.float64)
-        for rx in range(self.max_rank+1):
+        _weights = np.zeros((self.max_rank + 1, self.max_rank + 1, self.max_rank + 1), dtype=np.float64)
+        for rx in range(self.max_rank + 1):
             for ry in range(self.max_rank + 1):
                 for rz in range(self.max_rank + 1):
-                    _weights[rx, ry, rz] = np.exp(gammaln(rx+1)+gammaln(ry+1)+gammaln(rz+1)-gammaln(rx+ry+rz+1)*normcoef/2-gammaln((rx+ry+rz)/2+1)*(1-normcoef));
+                    _weights[rx, ry, rz] = np.exp(gammaln(rx + 1) + gammaln(ry + 1) + gammaln(rz + 1) - gammaln(
+                        rx + ry + rz + 1) * normcoef / 2 - gammaln((rx + ry + rz) / 2 + 1) * (1 - normcoef));
         # Normalization
         _weights = _weights * (2.0 / self.cube_side) ** 3
         self.moments_weights = torch.from_numpy(_weights[np.newaxis, ...]).to(device)
@@ -311,7 +313,8 @@ class GaussHermiteInvariants3D(CafmidstInvariant3D):
         op_type = np.float64
 
         def _ker_norm(ker, v):
-            ker[0, :] = np.exp(-np.power(v, 2, dtype=op_type) / 2.0, dtype=op_type) / np.power(np.pi, 0.25, dtype=op_type)
+            ker[0, :] = np.exp(-np.power(v, 2, dtype=op_type) / 2.0, dtype=op_type) / np.power(np.pi, 0.25,
+                                                                                               dtype=op_type)
             ker[1, :] = np.power(2, 0.5, dtype=op_type) * v * ker[0, :]
 
             for d in range(2, self.max_rank + 1):
@@ -327,21 +330,21 @@ class GaussHermiteInvariants3D(CafmidstInvariant3D):
         kerz = _ker_norm(ker=np.zeros((self.max_rank + 1, len(z)), dtype=op_type),
                          v=z)
 
-        polynomials = np.zeros((self.max_rank + 1, self.max_rank + 1, self.max_rank +1,
-                                self.cube_side**3))
+        polynomials = np.zeros((self.max_rank + 1, self.max_rank + 1, self.max_rank + 1,
+                                self.cube_side ** 3))
 
         for rx in range(0, self.max_rank + 1):
             for ry in range(0, self.max_rank + 1 - rx):
                 for rz in range(0, self.max_rank + 1 - rx - ry):
-                    for a in range(0, self.cube_side**3):
+                    for a in range(0, self.cube_side ** 3):
                         polynomials[rx, ry, rz, a] = (
-                            kerx[rx, a] * kery[ry, a] * kerz[rz, a]
+                                kerx[rx, a] * kery[ry, a] * kerz[rz, a]
                         )
         return (
             polynomials
-                .reshape((self.max_rank+1, self.max_rank+1, self.max_rank+1,
-                          self.cube_side, self.cube_side, self.cube_side), order='F')
-                .reshape((self.max_rank+1, self.max_rank + 1, self.max_rank + 1, self.cube_side ** 3), order='C')
+            .reshape((self.max_rank + 1, self.max_rank + 1, self.max_rank + 1,
+                      self.cube_side, self.cube_side, self.cube_side), order='F')
+            .reshape((self.max_rank + 1, self.max_rank + 1, self.max_rank + 1, self.cube_side ** 3), order='C')
         )
 
     def normalization_moments(self, moments: torch.Tensor) -> torch.Tensor:
@@ -360,3 +363,130 @@ class GaussHermiteInvariants3D(CafmidstInvariant3D):
                                              normcoef=self.normcoef))
 
         return matlab_moments
+
+
+class ZernikeInvariants3D(Invariant3D):
+    def __init__(self,
+                 types: int,
+                 num_invariants: int,
+                 cube_side: int,
+                 max_rank: int,
+                 device: torch.device):
+        self.types = types
+        self._polynomial_shape = (max_rank + 1,
+                                  np.floor(max_rank / 2.0).astype(int) + 1,
+                                  2 * max_rank + 1)
+
+        super().__init__(num_invariants,
+                         cube_side,
+                         max_rank,
+                         device)
+        self.invariants_sizes = torch.tensor(
+            data=[torch.sum(ind[:, 0, 0], dtype=torch.float64) / 3.0 for ind in self.invariants_ind],
+            dtype=torch.float64,
+            device=device)
+
+    def init_moments2invariants(self) -> Tuple[Sequence[torch.Tensor], Sequence[torch.Tensor]]:
+        invariant_ind = [ind.astype(np.int64) for ind in np.load('complex_moments2invariants/complex_moments2invariants_ind.npz', allow_pickle=True)['ind']]
+        invariant_coef = list(np.load('complex_moments2invariants/complex_moments2invariants_coef.npz', allow_pickle=True).values())
+
+        # Test uint8
+        for ind in invariant_ind:
+            assert np.max(ind) <= 255
+
+        # Convert to Tensor
+        invariant_coef = [torch.from_numpy(np.array(coef, dtype=np.float64)) for coef in invariant_coef]
+        invariant_ind = [torch.from_numpy(ind.astype(int)) for ind in invariant_ind]
+        return invariant_ind, invariant_coef
+
+    def init_polynomials(self) -> np.ndarray:
+        x, y, z = self.get_coords(-1, 1, order='F')
+
+        # Spherical coordinate system
+        r = np.sqrt(x ** 2 + y ** 2 + z ** 2, dtype=np.float64)
+        theta = np.arccos(np.divide(z, r, where=r != 0, dtype=np.float64), dtype=np.float64)
+        # Replace the r=0 NaN value
+        assert np.sum(r == 0) == 1
+        theta[r == 0] = 0.0
+        phi = np.arctan2(y, x, dtype=np.float64)
+
+        # Kintner (recursive) method
+        # https://en.wikipedia.org/wiki/Zernike_polynomials#Zernike_polynomials
+        polynomials = np.zeros((*self.get_polynomial_shape(), self.cube_side ** 3),
+                               dtype=np.complex128)
+
+        for el in range(0, self.max_rank + 1):
+            for em in range(-el, el + 1):
+                rmn0 = r ** el
+                # NOTE: scipy.special.sph_harm(m, n, phi, theta) matlab.spherical_harmonics(n, m, theta, phi)
+                vmn = np.conjugate(rmn0 * self.sphere_harmonics(m=em, n=el, phi=theta, theta=phi))
+                polynomials[el, np.floor(el / 2).astype(int), em + el, :] = (el + 1) / np.pi * vmn
+                if (self.max_rank - el) >= 2:
+                    rmn2 = (el + 2) * r ** (el + 2) - (el + 1) * r ** el
+                    vmn = np.conjugate(rmn2 * self.sphere_harmonics(m=em, n=el, phi=theta, theta=phi))
+                    polynomials[el + 2, np.floor(el / 2).astype(int), em + el, :] = (el + 3) / np.pi * vmn
+                else:
+                    # TODO: wtf rmn2
+                    pass
+                for es in range(el + 4, self.max_rank + 1, 2):
+                    k1 = (es + el) * (es - el) * (es - 2) / 2
+                    k2 = 2 * es * (es - 1) * (es - 2)
+                    k3 = -el ** 2 * (es - 1) - es * (es - 1) * (es - 2)
+                    k4 = -es * (es + el - 2) * (es - el - 2) / 2
+                    rmn4 = ((k2 * r ** 2 + k3) * rmn2 + k4 * rmn0) / k1
+                    vmn = np.conjugate(rmn4 * self.sphere_harmonics(m=em, n=el, phi=theta, theta=phi))
+                    polynomials[es, np.floor(el / 2).astype(int), em + el, :] = (es + 1) / np.pi * vmn
+                    rmn0 = rmn2
+                    rmn2 = rmn4
+
+        return (polynomials
+                # Matlab format
+                .reshape((*self.get_polynomial_shape(),
+                          self.cube_side, self.cube_side, self.cube_side), order='F')
+                # Pytorch format
+                .reshape((*self.get_polynomial_shape(),
+                          self.cube_side ** 3))
+                )
+
+    def pre_invariant_moments_normalization(self, moments: torch.Tensor) -> torch.Tensor:
+        if self.types > 0:
+            # NOTE: normalization is inplace
+            raise NotImplementedError("Not implemented")
+        else:
+            return moments
+
+    def normalization_invariants(self, invariants: torch.Tensor) -> torch.Tensor:
+        return torch.sign(invariants) * (torch.abs(invariants) ** (1.0 / self.invariants_sizes))
+
+    def normalization_moments(self, moments: torch.Tensor) -> torch.Tensor:
+        return moments
+
+    def _get_matlab_polynomials(self) -> np.ndarray:
+        return matlab_zernike_polynomials(self.cube_side, self.max_rank)
+
+    def _get_matlab_moments(self, images: torch.Tensor) -> np.ndarray:
+        matlab_moments = np.zeros([images.shape[0], *self.get_polynomial_shape()], dtype=np.complex128)
+        for idx, image in enumerate(images):
+            matlab_moments[idx] = (
+                matlab_zernike_moments(image.cpu().numpy(), self.max_rank))
+
+        return matlab_moments
+
+    def _get_matlab_invariants(self, images: torch.Tensor) -> np.ndarray:
+        matlab_moments = self._get_matlab_moments(images)
+        matlab_invariants = np.zeros((images.shape[0], self.num_invariants))
+        # Matlab parameters
+        indices = matlab_readinv3dst("matlab/ccmf6indep.txt")
+        for idx, img_moments in enumerate(matlab_moments):
+            matlab_invariants[idx] = matlab_cafmi3dcomplex(indices,
+                                                           img_moments,
+                                                           types=self.types,
+                                                           typeg=1)
+        return matlab_invariants
+
+    def get_polynomial_shape(self):
+        return self._polynomial_shape
+
+    @staticmethod
+    def sphere_harmonics(m, n, theta, phi):
+        return np.nan_to_num(sph_harm(m, n, theta, phi))
