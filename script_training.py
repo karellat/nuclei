@@ -57,7 +57,8 @@ for mask_idx in MASK_IDS:
                             cx - SPHERE_RADIUS:cx + SPHERE_RADIUS + 1,
                             cy - SPHERE_RADIUS:cy + SPHERE_RADIUS + 1,
                             cz - SPHERE_RADIUS:cz + SPHERE_RADIUS + 1]).to(device)
-    np.testing.assert_allclose(torch.sum(cube).cpu(), np.sum(masked))
+    if not np.isclose(torch.sum(cube).cpu(), np.sum(masked)):
+        logger.warning(f"Cube idx {mask_idx} is not covering the whole mask") 
     invariants = torch.zeros((1, INVARIANTS_NUM)).to(device)
     invariants = model.invariants(images=cube.reshape((1, SRZ, SRZ, SRZ)),
                                   out=invariants)

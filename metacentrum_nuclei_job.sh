@@ -2,7 +2,6 @@
 #PBS -l select=1:ncpus=1:mem=10gb:ngpus=1:gpu_mem=30gb:scratch_local=30gb
 #PBS -l walltime=6:00:00
 #PBS -q gpu
-#PBS -N nuclei
 #PBS -m ae
 
 # FUNCS
