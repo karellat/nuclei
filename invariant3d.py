@@ -19,10 +19,14 @@ from matlab_bridge import matlab_zernike_polynomials, matlab_cafmi3dcomplex, mat
 
 class Invariant3D(ABC):
     def __init__(self,
+                 typeg: int,
                  num_invariants: int,
                  cube_side: int,
                  max_rank: int,
                  device: torch.device):
+        self.typeg = typeg
+        # Invariant normalization 0 - none, 1 - to weight, 2 - to degree
+        assert self.typeg in [0, 1, 2]
         self.num_invariants = num_invariants
         self.max_rank = max_rank
         self.cube_side = cube_side
@@ -38,10 +42,11 @@ class Invariant3D(ABC):
         # Move to device
         self.invariants_ind = [x.to(device) for x in self.invariants_ind]
         self.invariants_coef = [x.to(device) for x in self.invariants_coef]
-
+        # Normalization parameters
+        self.invariant_weights = self.init_invariant_weights().to(device)
+        self.invariant_degrees = self.init_invariant_degrees().to(device)
         # TODO: assert invariants
-        # TODO: Uncomment
-        # assert self.invariants_ind[0].ndim == 3
+        assert self.invariants_ind[0].ndim == 3
 
     def get_moments(self, images: torch.Tensor) -> torch.Tensor:
         assert images.ndim == 4, "Expecting shape [batch_size, x*y*z (flatten='C')]"
@@ -83,9 +88,16 @@ class Invariant3D(ABC):
     def pre_invariant_moments_normalization(self, moments: torch.Tensor) -> torch.Tensor:
         pass
 
-    @abstractmethod
     def normalization_invariants(self, invariants: torch.Tensor) -> torch.Tensor:
-        pass
+        # No normalization
+        if self.typeg == 0:
+            return invariants
+        # Invariant normalization to weight
+        elif self.typeg == 1:
+            return torch.sign(invariants) * (torch.abs(invariants) ** (1.0 / self.invariant_weights))
+        # Invariant normalization to degree
+        elif self.typeg == 2:
+            return torch.sign(invariants) * (torch.abs(invariants) ** (1.0 / self.invariant_degrees))
 
     @abstractmethod
     def normalization_moments(self, moments: torch.Tensor) -> torch.Tensor:
@@ -125,21 +137,25 @@ class Invariant3D(ABC):
         # TODO: post_invariant normalization
         return self.normalization_invariants(out)
 
+    @abstractmethod
+    def init_invariant_weights(self):
+        pass
+
+    @abstractmethod
+    def init_invariant_degrees(self):
+        pass
+
 
 class CafmidstInvariant3D(Invariant3D):
 
-    def __init__(self, types: int, num_invariants: int, cube_side: int, max_rank: int, device: torch.device):
+    def __init__(self,typeg:int, types: int, num_invariants: int, cube_side: int, max_rank: int, device: torch.device):
         self._polynomial_shape = (max_rank + 1, max_rank + 1, max_rank + 1)
-        super().__init__(num_invariants, cube_side, max_rank, device)
         self.types = types
         self.param_v = torch.tensor(2 + (types % 2) if types > 0 else 3,
                                     dtype=torch.float64,
                                     device=device)
-        # self.invariants_ind init in super class
-        self.invariants_sizes = torch.tensor(
-            data=[torch.sum(ind[:, 0, :]) / self.param_v for ind in self.invariants_ind],
-            dtype=torch.float64,
-            device=device)
+        super().__init__(typeg, num_invariants, cube_side, max_rank, device)
+
 
     @abstractmethod
     def init_polynomials(self) -> np.ndarray:
@@ -182,9 +198,6 @@ class CafmidstInvariant3D(Invariant3D):
         else:
             return moments
 
-    def normalization_invariants(self, invariants: torch.Tensor) -> torch.Tensor:
-        return torch.sign(invariants) * (torch.abs(invariants) ** (1.0 / self.invariants_sizes))
-
     def _get_matlab_invariants(self, images: torch.Tensor) -> np.ndarray:
         matlab_moments = self._get_matlab_moments(images)
         matlab_invariants = np.zeros((images.shape[0], self.num_invariants))
@@ -197,8 +210,16 @@ class CafmidstInvariant3D(Invariant3D):
                                                       matlab_invariant_ind,
                                                       img_moments,
                                                       types=self.types,
-                                                      typeg=1)
+                                                      typeg=self.typeg)
         return matlab_invariants
+
+    def init_invariant_degrees(self):
+        return torch.tensor(data=[ind.shape[0] for ind in self.invariants_ind],
+                            dtype=torch.float64)
+
+    def init_invariant_weights(self):
+        return torch.tensor(data=[torch.sum(ind[:, 0, :]) / self.param_v for ind in self.invariants_ind],
+                            dtype=torch.float64)
 
 
 class AppellInvariant3D(CafmidstInvariant3D):
@@ -208,6 +229,7 @@ class AppellInvariant3D(CafmidstInvariant3D):
                  appell_weight: Appell_polynomial_weights,
                  appell_parameter_s: float,
                  appell_type_s: int,
+                 typeg: int,
                  num_invariants: int,
                  cube_side: int,
                  max_rank: int,
@@ -221,7 +243,8 @@ class AppellInvariant3D(CafmidstInvariant3D):
                                                  dtype=torch.float64,
                                                  device=device)
         # Convert to Tensor
-        super().__init__(types=appell_type_s,
+        super().__init__(typeg=typeg,
+                         types=appell_type_s,
                          num_invariants=num_invariants,
                          cube_side=cube_side,
                          max_rank=max_rank,
@@ -278,6 +301,7 @@ class AppellInvariant3D(CafmidstInvariant3D):
 
 class GaussHermiteInvariants3D(CafmidstInvariant3D):
     def __init__(self,
+                 typeg: int,
                  types: int,
                  sigma: float,
                  normcoef: float,
@@ -288,7 +312,8 @@ class GaussHermiteInvariants3D(CafmidstInvariant3D):
         self.sigma = sigma
         self.normcoef = normcoef
         # TODO: Add parameters
-        super().__init__(types=types,
+        super().__init__(typeg=typeg,
+                         types=types,
                          num_invariants=num_invariants,
                          cube_side=cube_side,
                          max_rank=max_rank,
@@ -298,7 +323,7 @@ class GaussHermiteInvariants3D(CafmidstInvariant3D):
             for ry in range(self.max_rank + 1):
                 for rz in range(self.max_rank + 1):
                     _weights[rx, ry, rz] = np.exp(gammaln(rx + 1) + gammaln(ry + 1) + gammaln(rz + 1) - gammaln(
-                        rx + ry + rz + 1) * normcoef / 2 - gammaln((rx + ry + rz) / 2 + 1) * (1 - normcoef));
+                        rx + ry + rz + 1) * normcoef / 2 - gammaln((rx + ry + rz) / 2 + 1) * (1 - normcoef))
         # Normalization
         _weights = _weights * (2.0 / self.cube_side) ** 3
         self.moments_weights = torch.from_numpy(_weights[np.newaxis, ...]).to(device)
@@ -367,6 +392,7 @@ class GaussHermiteInvariants3D(CafmidstInvariant3D):
 
 class ZernikeInvariants3D(Invariant3D):
     def __init__(self,
+                 typeg: int,
                  types: int,
                  num_invariants: int,
                  cube_side: int,
@@ -377,14 +403,11 @@ class ZernikeInvariants3D(Invariant3D):
                                   np.floor(max_rank / 2.0).astype(int) + 1,
                                   2 * max_rank + 1)
 
-        super().__init__(num_invariants,
+        super().__init__(typeg,
+                         num_invariants,
                          cube_side,
                          max_rank,
                          device)
-        self.invariants_sizes = torch.tensor(
-            data=[torch.sum(ind[:, 0, 0], dtype=torch.float64) / 3.0 for ind in self.invariants_ind],
-            dtype=torch.float64,
-            device=device)
 
     def init_moments2invariants(self) -> Tuple[Sequence[torch.Tensor], Sequence[torch.Tensor]]:
         invariant_ind = [ind.astype(np.int64) for ind in np.load('complex_moments2invariants/complex_moments2invariants_ind.npz', allow_pickle=True)['ind']]
@@ -455,8 +478,13 @@ class ZernikeInvariants3D(Invariant3D):
         else:
             return moments
 
-    def normalization_invariants(self, invariants: torch.Tensor) -> torch.Tensor:
-        return torch.sign(invariants) * (torch.abs(invariants) ** (1.0 / self.invariants_sizes))
+    def init_invariant_weights(self):
+        return torch.tensor(data=[torch.sum(ind[:, 0, 0], dtype=torch.float64) / 3.0 for ind in self.invariants_ind],
+                            dtype=torch.float64)
+
+    def init_invariant_degrees(self):
+        return torch.tensor(data=[ind.shape[0] for ind in self.invariants_ind],
+                            dtype=torch.float64)
 
     def normalization_moments(self, moments: torch.Tensor) -> torch.Tensor:
         return moments
@@ -481,7 +509,7 @@ class ZernikeInvariants3D(Invariant3D):
             matlab_invariants[idx] = matlab_cafmi3dcomplex(indices,
                                                            img_moments,
                                                            types=self.types,
-                                                           typeg=1)
+                                                           typeg=self.typeg)
         return matlab_invariants
 
     def get_polynomial_shape(self):

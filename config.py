@@ -18,10 +18,12 @@ OUTPUT_NAME = f"result_{NAME}"
 SKIP_ZEROS = True
 INVARIANTS_NUM = 77
 SRZ = SPHERE_RADIUS * 2 + 1
+TYPEG = 1
 # Model
 model_type = ZernikeInvariants3D
 # Parameters
 model_params = dict(
+    typeg=TYPEG,
     types=0,
     num_invariants=INVARIANTS_NUM,
     cube_side=SRZ,

@@ -7,16 +7,14 @@ from matlab_bridge import get_images
 from invariant3d import AppellInvariant3D, Invariant3D, GaussHermiteInvariants3D, ZernikeInvariants3D
 from appell_polynomials_3D import Appell_Type, Appell_polynomial_weights
 
-# TODO: Remove
-from matlab_bridge import matlab_gauss_hermite_moments
-
+TYPEG = 2
 MAX_RANK = 6
 SPHERE_RADIUS = 20
 SRZ = 2 * SPHERE_RADIUS + 1
 APPELL_PARAMETER_S = 1
 NUM_INVARIANTS = 77
 TYPES = 0
-DEVICE = 'cuda'
+DEVICE = 'cpu'
 
 
 def _torch_images():
@@ -57,7 +55,8 @@ def _test_invariants(model: Invariant3D):
 def _test_appell(_test_fnc):
     for t in Appell_Type:
         for w in Appell_polynomial_weights:
-            model = AppellInvariant3D(appell_type=t,
+            model = AppellInvariant3D(typeg=TYPEG,
+                                      appell_type=t,
                                       appell_weight=w,
                                       appell_parameter_s=APPELL_PARAMETER_S,
                                       appell_type_s=TYPES,
@@ -69,7 +68,8 @@ def _test_appell(_test_fnc):
 
 
 def _test_gauss_hermite(_test_fnc):
-    model = GaussHermiteInvariants3D(types=TYPES,
+    model = GaussHermiteInvariants3D(typeg=TYPEG,
+                                     types=TYPES,
                                      sigma=0.3,
                                      normcoef=0.5,
                                      num_invariants=NUM_INVARIANTS,
@@ -80,7 +80,8 @@ def _test_gauss_hermite(_test_fnc):
 
 
 def _test_zernike(_test_fnc):
-    model = ZernikeInvariants3D(types=TYPES,
+    model = ZernikeInvariants3D(typeg=TYPEG,
+                                types=TYPES,
                                 num_invariants=NUM_INVARIANTS,
                                 cube_side=SRZ,
                                 max_rank=MAX_RANK,

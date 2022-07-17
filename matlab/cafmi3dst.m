@@ -45,6 +45,7 @@ else
     v=3;
 end
 
+
 for i1=1:length(ind)
 %     k=length(f(i1).coef);
 %     maux=zeros(j,k);

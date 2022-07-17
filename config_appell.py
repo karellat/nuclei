@@ -5,6 +5,7 @@ from invariant3d import AppellInvariant3D, GaussHermiteInvariants3D
 SPHERE_RADIUS = 20
 BATCH_SIZE = 5
 MAX_RANK = 6
+TYPEG = 1
 # First
 MASK_IDS = [107, 156, 204, 253, 302, 351, 399, 448, 497, 58]
 # Second
@@ -22,6 +23,7 @@ SRZ = SPHERE_RADIUS * 2 + 1
 model_type = AppellInvariant3D
 # Parameters
 model_params = dict(
+    typeg=TYPEG,
     appell_type=Appell_Type.U,
     appell_weight=Appell_polynomial_weights.WEIGHTED_5,
     appell_parameter_s=1,
