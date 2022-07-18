@@ -408,6 +408,7 @@ class ZernikeInvariants3D(Invariant3D):
                          cube_side,
                          max_rank,
                          device)
+        self.moment_normalization_parameter = torch.tensor(data=self.cube_side ** 3, device=device)
 
     def init_moments2invariants(self) -> Tuple[Sequence[torch.Tensor], Sequence[torch.Tensor]]:
         invariant_ind = [ind.astype(np.int64) for ind in np.load('complex_moments2invariants/complex_moments2invariants_ind.npz', allow_pickle=True)['ind']]
@@ -487,7 +488,7 @@ class ZernikeInvariants3D(Invariant3D):
                             dtype=torch.float64)
 
     def normalization_moments(self, moments: torch.Tensor) -> torch.Tensor:
-        return moments
+        return moments / self.moment_normalization_parameter
 
     def _get_matlab_polynomials(self) -> np.ndarray:
         return matlab_zernike_polynomials(self.cube_side, self.max_rank)

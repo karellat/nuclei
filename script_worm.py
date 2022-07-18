@@ -36,10 +36,13 @@ def get_sphere_mask(radius):
 
 
 numpy_worm = get_data(PATH)
+logger.debug(f"Loading data from {PATH}, intensity mean {np.mean(numpy_worm)}+-{np.std(numpy_worm)}")
 
 # Invariants
 model = _init_model(model_type, model_params, device)
-logger.debug("Model initialized.")
+logger.debug(f"Model {type(model).__name__}")
+for k, v in model_params.items():
+    logger.debug(f"\t{k}:{v}")
 
 # Load training set
 classes = torch.zeros([10, 77], dtype=torch.float64).to(device)
@@ -61,7 +64,6 @@ logger.debug("Data prepared.")
 
 distance_result = -1 * torch.ones([*worm.shape], dtype=torch.float64).to(device)
 distance_arg = -1 * torch.ones([*worm.shape], dtype=torch.int64).to(device)
-
 
 
 logger.debug("Invariants calculation.")

@@ -2,7 +2,6 @@ import os
 from loguru import logger
 import numpy as np
 import torch
-from appell_invariant import InvariantAppell
 import scipy.io
 from dataset import get_mask, get_data
 
@@ -14,7 +13,6 @@ from invariant3d import Invariant3D
 assert torch.cuda.is_available()
 device = torch.device('cuda')
 
-logger.debug("Debug mode")
 
 
 def _init_model(model, model_params, device) -> Invariant3D:
@@ -22,10 +20,13 @@ def _init_model(model, model_params, device) -> Invariant3D:
 
 
 numpy_worm = get_data(PATH)
+logger.debug(f"Loading data from {PATH}, intensity mean {np.mean(numpy_worm)}+-{np.std(numpy_worm)}")
 numpy_masks = get_mask(PATH_MASK)
 
 model = _init_model(model_type, model_params, device)
-
+logger.debug(f"Model {type(model).__name__}")
+for k, v in model_params.items():
+    logger.debug(f"\t{k}:{v}")
 logger.debug(f"Preparing training set, CM method: {CM}")
 for mask_idx in MASK_IDS:
     logger.debug(f"Calculating idx: {mask_idx}")
@@ -80,3 +81,4 @@ for mask_idx in MASK_IDS:
                           ty=cy,
                           tz=cz))
     logger.debug(f"\tSaving as {_path}.")
+logger.debug(f"Training set done.")

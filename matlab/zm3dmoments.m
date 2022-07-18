@@ -56,4 +56,4 @@ for el=0:rd  %latitudinal repetition
     end
 end
 %normalization to density of sampling
-%A= A / (szm^3);
+A= A / (szm^3);
