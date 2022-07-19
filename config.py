@@ -1,5 +1,5 @@
 from appell_polynomials_3D import Appell_Type, Appell_polynomial_weights
-from invariant3d import ZernikeInvariants3D, AppellInvariant3D, GaussHermiteInvariants3D
+from invariant3d import ZernikeInvariants3D, AppellInvariant3D, GaussHermiteInvariants3D, ZernikeMomentsNormalization
 
 # Basic params
 SPHERE_RADIUS = 20
@@ -28,5 +28,6 @@ model_params = dict(
     num_invariants=INVARIANTS_NUM,
     cube_side=SRZ,
     max_rank=MAX_RANK,
-    mask_sphere=True
+    mask_sphere=True,
+    moment_normalization=ZernikeMomentsNormalization.M00
 )

@@ -515,7 +515,10 @@ class ZernikeInvariants3D(Invariant3D):
         matlab_moments = np.zeros([images.shape[0], *self.get_polynomial_shape()], dtype=np.complex128)
         for idx, image in enumerate(images):
             matlab_moments[idx] = (
-                matlab_zernike_moments(image.cpu().numpy(), self.max_rank, self.mask_sphere, self.moment_normalization.value))
+                matlab_zernike_moments(image.cpu().numpy(),
+                                       self.max_rank,
+                                       self.mask_sphere,
+                                       self.moment_normalization.value))
 
         return matlab_moments
 
