@@ -28,4 +28,5 @@ model_params = dict(
     num_invariants=INVARIANTS_NUM,
     cube_side=SRZ,
     max_rank=MAX_RANK,
+    mask_sphere=True
 )

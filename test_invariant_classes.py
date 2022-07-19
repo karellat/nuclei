@@ -80,14 +80,15 @@ def _test_gauss_hermite(_test_fnc):
 
 
 def _test_zernike(_test_fnc):
-    model = ZernikeInvariants3D(typeg=TYPEG,
-                                types=TYPES,
-                                num_invariants=NUM_INVARIANTS,
-                                cube_side=SRZ,
-                                max_rank=MAX_RANK,
-                                mask_sphere=True,
-                                device=torch.device(DEVICE))
-    _test_fnc(model)
+    for masked in [True, False]:
+        model = ZernikeInvariants3D(typeg=TYPEG,
+                                    types=TYPES,
+                                    num_invariants=NUM_INVARIANTS,
+                                    cube_side=SRZ,
+                                    max_rank=MAX_RANK,
+                                    mask_sphere=masked,
+                                    device=torch.device(DEVICE))
+        _test_fnc(model)
 
 
 class TestAppellInvariant(TestCase):
