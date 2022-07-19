@@ -76,9 +76,9 @@ def matlab_zernike_polynomials(szm, rank, mask_sphere):
     return octave.zm3dpoly(szm, rank, mask_sphere)
 
 
-def matlab_zernike_moments(img, rank):
+def matlab_zernike_moments(img, rank, mask_sphere, normalization):
     _add_matlab()
-    return octave.zm3dmoments(img, rank)
+    return octave.zm3dmoments(img, rank, mask_sphere, normalization)
 
 
 def matlab_appell_polynomials_3d(m, n, o, x, y, z, t, s, w):

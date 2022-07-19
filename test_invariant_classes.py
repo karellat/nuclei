@@ -4,7 +4,7 @@ from unittest import TestCase
 from numpy.testing import assert_allclose
 from matlab_bridge import get_images
 
-from invariant3d import AppellInvariant3D, Invariant3D, GaussHermiteInvariants3D, ZernikeInvariants3D
+from invariant3d import AppellInvariant3D, Invariant3D, GaussHermiteInvariants3D, ZernikeInvariants3D, ZernikeMomentsNormalization
 from appell_polynomials_3D import Appell_Type, Appell_polynomial_weights
 
 TYPEG = 2
@@ -87,6 +87,7 @@ def _test_zernike(_test_fnc):
                                     cube_side=SRZ,
                                     max_rank=MAX_RANK,
                                     mask_sphere=masked,
+                                    moment_normalization=ZernikeMomentsNormalization.M00,
                                     device=torch.device(DEVICE))
         _test_fnc(model)
 

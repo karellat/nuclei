@@ -1,4 +1,4 @@
-function [A]=zm3dmoments(img,rd, mask_sphere)
+function [A]=zm3dmoments(img,rd, mask_sphere, normalization)
 % [A]=zm3d(img,rd,norm) computes Zernike moments up the rd-th order of the
 % 3d volumetric image img(n1,n2,n3).
 % if norm=0, origin in the centroid, the most distant corner is mapped to unit sphere.
@@ -26,8 +26,10 @@ theta=acos(z./r);
 assert(sum(isnan(theta)) == 1);
 theta(isnan(theta)) = 0;
 phi=atan2(y,x);
-sphere_mask = (r <= 1.0);
-v = v .* sphere_mask;
+if mask_sphere
+    sphere_mask = (r <= 1.0);
+    v = v .* sphere_mask;
+end
 
 %Kintner method
 A=zeros(rd+1,floor(rd/2)+1,2*rd+1);
@@ -58,4 +60,9 @@ for el=0:rd  %latitudinal repetition
     end
 end
 %normalization to density of sampling
-A= A / (szm^3);
+if normalization==1
+    A=A/A(1,1,1);
+elseif normalization==0
+   A = A / szm ^3;
+end
+end

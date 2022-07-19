@@ -1,6 +1,7 @@
 from typing import Tuple, Sequence
 import numpy as np
 import torch
+import enum
 from scipy.special import sph_harm
 from abc import ABC, abstractmethod
 from appell_polynomials_3D import appell_polynomials_recursive_3d, Appell_Type, \
@@ -390,6 +391,11 @@ class GaussHermiteInvariants3D(CafmidstInvariant3D):
         return matlab_moments
 
 
+class ZernikeMomentsNormalization(enum.Enum):
+    WEIGHT = 0 # SZM ^ 3
+    M00 = 1
+
+
 class ZernikeInvariants3D(Invariant3D):
     def __init__(self,
                  typeg: int,
@@ -398,8 +404,10 @@ class ZernikeInvariants3D(Invariant3D):
                  cube_side: int,
                  max_rank: int,
                  mask_sphere: bool,
+                 moment_normalization: ZernikeMomentsNormalization,
                  device: torch.device):
         self.types = types
+        self.moment_normalization = moment_normalization
         self.mask_sphere = mask_sphere
         self._polynomial_shape = (max_rank + 1,
                                   np.floor(max_rank / 2.0).astype(int) + 1,
@@ -495,7 +503,10 @@ class ZernikeInvariants3D(Invariant3D):
                             dtype=torch.float64)
 
     def normalization_moments(self, moments: torch.Tensor) -> torch.Tensor:
-        return moments / self.moment_normalization_parameter
+        if self.moment_normalization == ZernikeMomentsNormalization.M00:
+            return moments / moments[:, 0:1, 0:1, 0:1]
+        elif self.moment_normalization == ZernikeMomentsNormalization.WEIGHT:
+            return moments / self.moment_normalization_parameter
 
     def _get_matlab_polynomials(self) -> np.ndarray:
         return matlab_zernike_polynomials(self.cube_side, self.max_rank, self.mask_sphere)
@@ -504,7 +515,7 @@ class ZernikeInvariants3D(Invariant3D):
         matlab_moments = np.zeros([images.shape[0], *self.get_polynomial_shape()], dtype=np.complex128)
         for idx, image in enumerate(images):
             matlab_moments[idx] = (
-                matlab_zernike_moments(image.cpu().numpy(), self.max_rank))
+                matlab_zernike_moments(image.cpu().numpy(), self.max_rank, self.mask_sphere, self.moment_normalization.value))
 
         return matlab_moments
 
