@@ -397,8 +397,10 @@ class ZernikeInvariants3D(Invariant3D):
                  num_invariants: int,
                  cube_side: int,
                  max_rank: int,
+                 mask_sphere: bool,
                  device: torch.device):
         self.types = types
+        self.mask_sphere = mask_sphere
         self._polynomial_shape = (max_rank + 1,
                                   np.floor(max_rank / 2.0).astype(int) + 1,
                                   2 * max_rank + 1)
@@ -433,6 +435,7 @@ class ZernikeInvariants3D(Invariant3D):
         assert np.sum(r == 0) == 1
         theta[r == 0] = 0.0
         phi = np.arctan2(y, x, dtype=np.float64)
+        out_of_sphere = (r > 1.0)
 
         # Kintner (recursive) method
         # https://en.wikipedia.org/wiki/Zernike_polynomials#Zernike_polynomials
@@ -463,6 +466,10 @@ class ZernikeInvariants3D(Invariant3D):
                     rmn0 = rmn2
                     rmn2 = rmn4
 
+        # Mask values of the sphere
+        if self.mask_sphere:
+            polynomials[:, :, :, out_of_sphere] = 0.0
+
         return (polynomials
                 # Matlab format
                 .reshape((*self.get_polynomial_shape(),
@@ -491,7 +498,7 @@ class ZernikeInvariants3D(Invariant3D):
         return moments / self.moment_normalization_parameter
 
     def _get_matlab_polynomials(self) -> np.ndarray:
-        return matlab_zernike_polynomials(self.cube_side, self.max_rank)
+        return matlab_zernike_polynomials(self.cube_side, self.max_rank, self.mask_sphere)
 
     def _get_matlab_moments(self, images: torch.Tensor) -> np.ndarray:
         matlab_moments = np.zeros([images.shape[0], *self.get_polynomial_shape()], dtype=np.complex128)

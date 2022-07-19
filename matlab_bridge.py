@@ -71,9 +71,9 @@ def matlab_gauss_hermite_moments(img, rank, sigma, normcoef):
     return octave.GauHerMom3Dnorm(img, rank, sigma, normcoef)
 
 
-def matlab_zernike_polynomials(szm, rank): 
+def matlab_zernike_polynomials(szm, rank, mask_sphere):
     _add_matlab()
-    return octave.zm3dpoly(szm, rank)
+    return octave.zm3dpoly(szm, rank, mask_sphere)
 
 
 def matlab_zernike_moments(img, rank):

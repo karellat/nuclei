@@ -1,6 +1,6 @@
-function [poly] = zm3dpoly(szm, rank)
+function [poly] = zm3dpoly(szm, rank, mask_sphere)
 
-[x,y,z]= meshgrid(linspace(-1,1,szm), linspace(-1,1,szm), linspace(-1,1,szm));
+[x,y,z] = meshgrid(linspace(-1,1,szm), linspace(-1,1,szm), linspace(-1,1,szm));
 x = x(:)';
 y = y(:)';
 z = z(:)';
@@ -12,6 +12,8 @@ theta=acos(z./r);
 assert(sum(isnan(theta)) == 1);
 theta(isnan(theta)) = 0;
 phi=atan2(y,x);
+sphere_mask = zeros(1, 1, 1, szm^3);
+sphere_mask(1,1,1,:) = (r <= 1.0)';
 
 %Kintner method
 poly=zeros(rank+1,floor(rank/2)+1,2*rank+1, szm^3);
@@ -35,6 +37,15 @@ for el=0:rank  %latitudinal repetition
             poly(es+1,floor(el/2)+1,em+el+1, :)=(es+1)/pi*vmn;
             rmn0=rmn2;
             rmn2=rmn4;
+        end
+    end
+end
+if mask_sphere
+    for x = 1:size(poly,1)
+        for y = 1:size(poly, 2)
+            for z = 1:size(poly, 3)
+                poly(x,y,z,:) = poly(x,y,z,:) .* sphere_mask;
+            end
         end
     end
 end

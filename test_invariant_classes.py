@@ -85,6 +85,7 @@ def _test_zernike(_test_fnc):
                                 num_invariants=NUM_INVARIANTS,
                                 cube_side=SRZ,
                                 max_rank=MAX_RANK,
+                                mask_sphere=True,
                                 device=torch.device(DEVICE))
     _test_fnc(model)
 
