@@ -11,7 +11,7 @@ from invariant3d import Invariant3D
 
 # Setting
 if torch.cuda.is_available():
-    device = torch.device('gpu')
+    device = torch.device('cuda')
 else:
     device = torch.device('cpu')
 
