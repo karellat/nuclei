@@ -9,11 +9,12 @@ from appell_polynomials_3D import appell_polynomials_recursive_3d, Appell_Type, 
 # Appell
 from matlab_bridge import matlab_appell_polynomials_recursive_3d, matlab_appell_moments_3D_predef, matlab_cafmi3dst
 # Gauss-Hermite
-from matlab_bridge import matlab_gauss_hermite_moments, matlab_gauss_hermite_polynoms, matlab_zernike_moments
+from matlab_bridge import matlab_gauss_hermite_moments, matlab_gauss_hermite_polynoms
 from scipy.special import gammaln
 # Zernike
-from matlab_bridge import matlab_zernike_polynomials, matlab_cafmi3dcomplex, matlab_readinv3dst
-
+from matlab_bridge import matlab_zernike_polynomials, matlab_cafmi3dcomplex, matlab_readinv3dst,matlab_zernike_moments
+# Geometric
+from matlab_bridge import matlab_geometric_polynomials, matlab_geometric_moments
 
 # TODO: Doc
 
@@ -149,7 +150,7 @@ class Invariant3D(ABC):
 
 class CafmidstInvariant3D(Invariant3D):
 
-    def __init__(self,typeg:int, types: int, num_invariants: int, cube_side: int, max_rank: int, device: torch.device):
+    def __init__(self, typeg:int, types: int, num_invariants: int, cube_side: int, max_rank: int, device: torch.device):
         self._polynomial_shape = (max_rank + 1, max_rank + 1, max_rank + 1)
         self.types = types
         self.param_v = torch.tensor(2 + (types % 2) if types > 0 else 3,
@@ -540,3 +541,53 @@ class ZernikeInvariants3D(Invariant3D):
     @staticmethod
     def sphere_harmonics(m, n, theta, phi):
         return np.nan_to_num(sph_harm(m, n, theta, phi))
+
+
+class GeometricInvariants3D(CafmidstInvariant3D):
+    def init_polynomials(self) -> np.ndarray:
+        v1 = np.linspace(-self.cube_side, self.cube_side, 1)
+        v2 = np.linspace(-self.cube_side, self.cube_side, 1)
+        v3 = np.linspace(-self.cube_side, self.cube_side, 1)
+        v3 = v3[np.newaxis, np.newaxis, :]
+        v1a = np.zeros((self.cube_side, self.cube_side, self.cube_side, self.max_rank+1))
+        v2a = np.zeros((self.cube_side, self.cube_side, self.cube_side, self.max_rank+1))
+        v3a = np.zeros((self.cube_side, self.cube_side, self.cube_side, self.max_rank+1))
+        for p in range(0, self.max_rank+1):
+            v1a[:, :, :, p] = np.tile(v1 ** p, [1, self.cube_side, self.cube_side])
+            v2a[:, :, :, p] = np.tile(v2 ** p, [self.cube_side, 1, self.cube_side])
+            v3a[:, :, :, p] = np.tile(v2 ** p, [self.cube_side, self.cube_side, 1])
+        polynomials = np.zeros([self.max_rank+1, self.max_rank+1, self.max_rank+1,
+                                self.cube_side, self.cube_side, self.cube_side])
+        for p in range(0, self.max_rank+1):
+            v1c = v1a[:, :, :, p]
+            for q in range(0, self.max_rank-p+1):
+                v2c = v2a[:, :, :, q]
+                for r in range(0, self.max_rank - p - q + 1):
+                    v3c = v3a[:, :, :, r]
+                    polynomials[p, q, r, :, :, :] = v1c * v2c * v3c
+
+        return (polynomials
+                # Matlab format
+                .reshape((*self.get_polynomial_shape(),
+                          self.cube_side, self.cube_side, self.cube_side), order='F')
+                # Pytorch format
+                .reshape((*self.get_polynomial_shape(),
+                          self.cube_side ** 3))
+                )
+
+    def normalization_moments(self, moments: torch.Tensor) -> torch.Tensor:
+        return moments
+
+    def _get_matlab_polynomials(self) -> np.ndarray:
+        # Typec=1 center of cube
+        return matlab_geometric_polynomials(szm=self.cube_side, order=self.max_rank, typec=1)
+
+    def _get_matlab_moments(self, images: torch.Tensor) -> np.ndarray:
+        matlab_moments = np.zeros([images.shape[0], self.max_rank + 1, self.max_rank + 1, self.max_rank + 1])
+        for idx, image in enumerate(images):
+            matlab_moments[idx] = (
+                # Typec=1 center of cube
+                matlab_geometric_moments(image, self.max_rank, typec=1)
+            )
+
+        return matlab_moments

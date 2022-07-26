@@ -151,3 +151,12 @@ def matlab_cafmi3dcomplex(f, moments, types, typeg):
                                  types,
                                  typeg)
 
+
+def matlab_geometric_polynomials(szm, order, typec):
+    _add_matlab()
+    return octave.cm3dpoly(szm, order, typec)
+
+
+def matlab_geometric_moments(image, order, typec):
+    _add_matlab()
+    return octave.cm3d(image, order, typec)

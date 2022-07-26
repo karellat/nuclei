@@ -4,7 +4,7 @@ from unittest import TestCase
 from numpy.testing import assert_allclose
 from matlab_bridge import get_images
 
-from invariant3d import AppellInvariant3D, Invariant3D, GaussHermiteInvariants3D, ZernikeInvariants3D, ZernikeMomentsNormalization
+from invariant3d import AppellInvariant3D, Invariant3D, GaussHermiteInvariants3D, ZernikeInvariants3D, ZernikeMomentsNormalization, GeometricInvariants3D
 from appell_polynomials_3D import Appell_Type, Appell_polynomial_weights
 
 TYPEG = 2
@@ -92,6 +92,16 @@ def _test_zernike(_test_fnc):
         _test_fnc(model)
 
 
+def _test_geometric(_test_fnc):
+    model = GeometricInvariants3D(typeg=TYPEG,
+                                  types=TYPES,
+                                  num_invariants=NUM_INVARIANTS,
+                                  cube_side=SRZ,
+                                  max_rank=MAX_RANK,
+                                  device=torch.device(DEVICE))
+    _test_fnc(model)
+
+
 class TestAppellInvariant(TestCase):
     def test_polynomials(self):
         _test_appell(_test_polynomials)
@@ -123,3 +133,13 @@ class TestZernikeInvariants3D(TestCase):
 
     def test_invariants(self):
         _test_zernike(_test_invariants)
+
+class TestGeometricInvariants3D(TestCase):
+    def test_polynomials(self):
+        _test_geometric(_test_polynomials)
+
+    def test_moments(self):
+        _test_geometric(_test_moments)
+
+    def test_invariants(self):
+        _test_geometric(_test_invariants)

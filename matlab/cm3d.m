@@ -1,4 +1,4 @@
-function [mr,t1,t2,t3]=cm3d(image,or,typc,h)
+function [mr,t1,t2,t3]=cm3d(image,or,typc)
 % mr=cm3d(image,or,typc,h)
 % It computes central 3D moments \mu_{pqr} up to the order 'or' 
 % from the 3D image 'image'.
@@ -7,8 +7,7 @@ function [mr,t1,t2,t3]=cm3d(image,or,typc,h)
 % typc=0 no centering (left-top-front corner - geometric moments), 
 % typc=1 center,
 % typc=2 centroid (default),
-% h is handle of a waitbar, if h==0, no waitbar is used (default)
-% t1,t2,t3 are coordinates of the centroid of the iamge
+% t1,t2,t3 are coordinates of the centroid of the image
 
 if nargin<3
     typc=2;
@@ -17,10 +16,7 @@ if nargin<4
     h=0;
 end
 or=round(or);
-if h>0
-    sza=sprintf('Computation of 3D central geometric moments to the order %d',or);
-    waitbar(0,h,sza);
-end
+
 pp=1;
 ppn=4+nchoosek(or+3,3);
 
@@ -46,9 +42,6 @@ elseif typc==2
             v2c=repmat(v2.^q,[n1 1 n3]);
             for r=0:1-p-q
                 v3c=repmat(v3.^r,[n1 n2 1]);
-                if h>0
-                    waitbar(pp/ppn,h);
-                end
                 pp=pp+1;
                 mp(p+1,q+1,r+1)=sum(v1c(:).*v2c(:).*v3c(:).*image(:));
             end
@@ -82,9 +75,6 @@ for p=0:or
         v2c=v2a(:,:,:,q+1);
         for r=0:or-p-q
             v3c=v3a(:,:,:,r+1);
-            if h>0
-                waitbar(pp/ppn,h);
-            end
             pp=pp+1;
             mr(p+1,q+1,r+1)=sum(v1c(:).*v2c(:).*v3c(:).*image(:));
         end
