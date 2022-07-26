@@ -10,9 +10,10 @@ from config import MAX_RANK, SPHERE_RADIUS, model_type, CM, SRZ, INVARIANTS_NUM,
 from invariant3d import Invariant3D
 
 # Setting
-assert torch.cuda.is_available()
-device = torch.device('cuda')
-
+if torch.cuda.is_available():
+    device = torch.device('gpu')
+else:
+    device = torch.device('cpu')
 
 
 def _init_model(model, model_params, device) -> Invariant3D:

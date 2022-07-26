@@ -14,8 +14,10 @@ from config import SKIP_ZEROS, MASK_IDS, SPHERE_RADIUS, NAME, BATCH_SIZE, model_
 from invariant3d import Invariant3D
 
 # Setting
-assert torch.cuda.is_available()
-device = torch.device('cuda')
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+else:
+   device = torch.device('cpu')
 logger.debug(f"Running on {device}")
 
 

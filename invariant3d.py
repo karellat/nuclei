@@ -150,7 +150,7 @@ class Invariant3D(ABC):
 
 class CafmidstInvariant3D(Invariant3D):
 
-    def __init__(self, typeg:int, types: int, num_invariants: int, cube_side: int, max_rank: int, device: torch.device):
+    def __init__(self, typeg: int, types: int, num_invariants: int, cube_side: int, max_rank: int, device: torch.device):
         self._polynomial_shape = (max_rank + 1, max_rank + 1, max_rank + 1)
         self.types = types
         self.param_v = torch.tensor(2 + (types % 2) if types > 0 else 3,
