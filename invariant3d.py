@@ -545,26 +545,21 @@ class ZernikeInvariants3D(Invariant3D):
 
 class GeometricInvariants3D(CafmidstInvariant3D):
     def init_polynomials(self) -> np.ndarray:
-        v1 = np.linspace(-self.cube_side, self.cube_side, 1)
-        v2 = np.linspace(-self.cube_side, self.cube_side, 1)
-        v3 = np.linspace(-self.cube_side, self.cube_side, 1)
-        v3 = v3[np.newaxis, np.newaxis, :]
-        v1a = np.zeros((self.cube_side, self.cube_side, self.cube_side, self.max_rank+1))
-        v2a = np.zeros((self.cube_side, self.cube_side, self.cube_side, self.max_rank+1))
-        v3a = np.zeros((self.cube_side, self.cube_side, self.cube_side, self.max_rank+1))
-        for p in range(0, self.max_rank+1):
-            v1a[:, :, :, p] = np.tile(v1 ** p, [1, self.cube_side, self.cube_side])
-            v2a[:, :, :, p] = np.tile(v2 ** p, [self.cube_side, 1, self.cube_side])
-            v3a[:, :, :, p] = np.tile(v2 ** p, [self.cube_side, self.cube_side, 1])
+        middle = int((self.cube_side + 1) / 2)
+        coords = np.arange(-middle+1, middle)
+        # x,y swap follows the matlab example code to make comparable
+        [y, x, z] = np.meshgrid(coords, coords, coords)
+        x = x.flatten(order='F')
+        y = y.flatten(order='F')
+        z = z.flatten(order='F')
+
         polynomials = np.zeros([self.max_rank+1, self.max_rank+1, self.max_rank+1,
-                                self.cube_side, self.cube_side, self.cube_side])
+                                self.cube_side**3])
+
         for p in range(0, self.max_rank+1):
-            v1c = v1a[:, :, :, p]
             for q in range(0, self.max_rank-p+1):
-                v2c = v2a[:, :, :, q]
                 for r in range(0, self.max_rank - p - q + 1):
-                    v3c = v3a[:, :, :, r]
-                    polynomials[p, q, r, :, :, :] = v1c * v2c * v3c
+                    polynomials[p, q, r, :] = x ** p * y ** q * z ** r
 
         return (polynomials
                 # Matlab format
@@ -587,7 +582,7 @@ class GeometricInvariants3D(CafmidstInvariant3D):
         for idx, image in enumerate(images):
             matlab_moments[idx] = (
                 # Typec=1 center of cube
-                matlab_geometric_moments(image, self.max_rank, typec=1)
+                matlab_geometric_moments(image.cpu().numpy(), self.max_rank, typec=1)
             )
 
         return matlab_moments

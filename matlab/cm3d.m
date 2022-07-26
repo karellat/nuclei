@@ -18,7 +18,6 @@ end
 or=round(or);
 
 pp=1;
-ppn=4+nchoosek(or+3,3);
 
 [n1,n2,n3]=size(image);
 

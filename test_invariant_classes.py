@@ -25,12 +25,12 @@ def _torch_images():
 
 
 def _test_polynomials(model: Invariant3D):
-    python_polynomials = model.polynomials.cpu().numpy()
     srz = model.cube_side
     matlab_polynomials = (model._get_matlab_polynomials()
                           .reshape((*model.get_polynomial_shape(), srz, srz, srz), order='F')
                           .reshape((*model.get_polynomial_shape(), srz ** 3), order='C')
                           )
+    python_polynomials = model.polynomials.cpu().numpy()
     assert_allclose(np.squeeze(python_polynomials),
                     np.squeeze(matlab_polynomials),
                     rtol=1e-12, atol=1e-12)
@@ -133,6 +133,7 @@ class TestZernikeInvariants3D(TestCase):
 
     def test_invariants(self):
         _test_zernike(_test_invariants)
+
 
 class TestGeometricInvariants3D(TestCase):
     def test_polynomials(self):
