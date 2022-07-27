@@ -15,13 +15,6 @@ echo "$PBS_JOBID is running on node `hostname -f` in a scratch directory $SCRATC
 echo "Loading modules"
 module load conda-modules octave
 
-# CONDA
-if find_in_conda_env ".*nuclei.*"; then
-   echo "Environment nuclei exists" 
-else
-   echo "Creating environment nuclei"
-   conda env create -f environment.yml
-fi
 
 echo "Preparing storage" 
 
@@ -33,12 +26,18 @@ NUCLEIDIR="$SCRATCHDIR/nuclei"
 # clean the SCRATCH when job finishes (and data
 # are successfully copied out) or is killed
 trap 'clean_scratch' TERM EXIT
-
 test -n "$SCRATCHDIR" || { echo >&2 "Variable SCRATCHDIR is not set!"; exit 1; }
 cp -r "$DATADIR"  "$SCRATCHDIR" || { echo >&2 "Error while copying input file(s)!"; exit 2; }
 cd "$NUCLEIDIR"
 ls -l .
 
+# CONDA
+if find_in_conda_env ".*nuclei.*"; then
+   echo "Environment nuclei exists" 
+else
+   echo "Creating environment nuclei"
+   conda env create -f environment.yml
+fi
 
 # Run script
 echo "Running training script"
