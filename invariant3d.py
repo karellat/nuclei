@@ -157,7 +157,10 @@ class CafmidstInvariant3D(Invariant3D):
                                     dtype=torch.float64,
                                     device=device)
         super().__init__(typeg, num_invariants, cube_side, max_rank, device)
-
+        self.index_sum = torch.from_numpy(
+            np.sum(np.indices(self.get_polynomial_shape()), axis=0).astype(np.float64)
+        ).to(device)
+        self.v = torch.tensor(data=(self.types % 2) + 2, dtype=torch.float64)
 
     @abstractmethod
     def init_polynomials(self) -> np.ndarray:
@@ -195,10 +198,15 @@ class CafmidstInvariant3D(Invariant3D):
 
     def pre_invariant_moments_normalization(self, moments: torch.Tensor) -> torch.Tensor:
         if self.types > 0:
-            # NOTE: normalization is inplace
-            return moments_volume_normalization(moments, self.types)
-        else:
-            return moments
+            # Volume normalization constant
+            m000 = moments[..., 0:1, 0:1, 0:1]
+            # Normalization to scaling
+            moments /= m000 ** ((self.index_sum + self.v) / self.v)
+            if self.types == 1:
+                moments *= torch.pi ** (self.index_sum / 6.0) * (self.index_sum + 3.0) / 1.5 ** (self.index_sum / 3.0 + 1.0)
+            elif self.types == 2:
+                moments *= torch.pi ** (self.index_sum / 4.0) * 2.0 ** (self.index_sum / 2.0)
+        return moments
 
     def _get_matlab_invariants(self, images: torch.Tensor) -> np.ndarray:
         matlab_moments = self._get_matlab_moments(images)

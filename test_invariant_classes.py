@@ -14,6 +14,7 @@ SRZ = 2 * SPHERE_RADIUS + 1
 APPELL_PARAMETER_S = 1
 NUM_INVARIANTS = 77
 TYPES = 0
+GEOMETRIC_TYPES = 1
 DEVICE = 'cpu'
 
 
@@ -94,7 +95,7 @@ def _test_zernike(_test_fnc):
 
 def _test_geometric(_test_fnc):
     model = GeometricInvariants3D(typeg=TYPEG,
-                                  types=TYPES,
+                                  types=GEOMETRIC_TYPES,
                                   num_invariants=NUM_INVARIANTS,
                                   cube_side=SRZ,
                                   max_rank=MAX_RANK,

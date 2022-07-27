@@ -24,7 +24,8 @@ model_type = GeometricInvariants3D
 # Parameters
 model_params = dict(
     typeg=TYPEG,
-    types=0,
+    # Magnitude normalization for geometric invariants
+    types=1,
     num_invariants=INVARIANTS_NUM,
     cube_side=SRZ,
     max_rank=MAX_RANK,
