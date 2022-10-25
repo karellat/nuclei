@@ -4,7 +4,7 @@ from unittest import TestCase
 from numpy.testing import assert_allclose
 from matlab_bridge import get_images
 
-from invariant3d import AppellInvariant3D, Invariant3D, GaussHermiteInvariants3D, ZernikeInvariants3D, ZernikeMomentsNormalization, GeometricInvariants3D
+from invariant3d import AppellInvariant3D, Invariant3D, GaussHermiteInvariants3D, ZernikeInvariants3D, ZernikeMomentsNormalization, GeometricInvariants3D, ComplexInvariants3D
 from appell_polynomials_3D import Appell_Type, Appell_polynomial_weights
 
 TYPEG = 2
@@ -34,7 +34,7 @@ def _test_polynomials(model: Invariant3D):
     python_polynomials = model.polynomials.cpu().numpy()
     assert_allclose(np.squeeze(python_polynomials),
                     np.squeeze(matlab_polynomials),
-                    rtol=1e-12, atol=1e-12)
+                    rtol=1e-14, atol=1e-14)
 
 
 def _test_moments(model: Invariant3D):
@@ -103,6 +103,16 @@ def _test_geometric(_test_fnc):
     _test_fnc(model)
 
 
+def _test_complex(_test_fnc): 
+    model = ComplexInvariants3D(typeg=TYPEG,
+                                types=GEOMETRIC_TYPES,
+                                num_invariants=NUM_INVARIANTS,
+                                cube_side=SRZ,
+                                max_rank=MAX_RANK,
+                                device=torch.device(DEVICE))
+    _test_fnc(model)
+
+
 class TestAppellInvariant(TestCase):
     def test_polynomials(self):
         _test_appell(_test_polynomials)
@@ -145,3 +155,14 @@ class TestGeometricInvariants3D(TestCase):
 
     def test_invariants(self):
         _test_geometric(_test_invariants)
+
+
+class TestComplexInvariants3D(TestCase):
+    def test_polynomials(self):
+        _test_complex(_test_polynomials)
+
+    def test_moments(self):
+        _test_complex(_test_moments)
+
+    def test_invariants(self):
+        _test_complex(_test_invariants)

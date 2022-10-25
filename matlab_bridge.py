@@ -160,3 +160,18 @@ def matlab_geometric_polynomials(szm, order, typec):
 def matlab_geometric_moments(image, order, typec):
     _add_matlab()
     return octave.cm3d(image, order, typec)
+
+
+def matlab_complex_polynomials(szm, order):
+    _add_matlab()
+    return octave.cc3dpoly(szm, order)
+
+
+def matlab_complex_moments(image, order, norm=1):
+    _add_matlab()
+    return octave.ccm3d(image, order, norm)
+
+
+def matlab_spherical_harmonic(n, m, theta, phi):
+    _add_matlab()
+    return octave.spherical_harmonic(n, m, theta, phi)
