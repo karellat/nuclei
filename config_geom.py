@@ -1,8 +1,8 @@
-from invariant3d import ComplexInvariants3D
+from invariant3d import GeometricInvariants3D
 
 # Basic params
 SPHERE_RADIUS = 20
-BATCH_SIZE = 5
+BATCH_SIZE = 1
 MAX_RANK = 6
 # First
 #MASK_IDS = [107, 156, 204, 253, 302, 351, 399, 448, 497, 58]
@@ -19,11 +19,12 @@ INVARIANTS_NUM = 77
 SRZ = SPHERE_RADIUS * 2 + 1
 TYPEG = 1
 # Model
-model_type = ComplexInvariants3D
+model_type = GeometricInvariants3D
 # Parameters
 model_params = dict(
     typeg=TYPEG,
-    types=0,
+    # Magnitude normalization for geometric invariants
+    types=1,
     num_invariants=INVARIANTS_NUM,
     cube_side=SRZ,
     max_rank=MAX_RANK,
