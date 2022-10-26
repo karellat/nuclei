@@ -662,11 +662,11 @@ class ComplexInvariants3D(CafmidComplexInvariant3D):
                 for em in range(-el, el + 1):
                     # NOTE: scipy.special.sph_harm(m, n, phi, theta) matlab.spherical_harmonics(n, m, theta, phi)
                      polynomials[es,
-                                np.floor(el / 2.0).astype(int),
-                                em + el, :] = np.power(r, es, dtype=np.complex128) * ZernikeInvariants3D.sphere_harmonics(m=em,
-                                                                                               n=el,
-                                                                                               phi=theta,
-                                                                                               theta=phi)
+                                 np.floor(el / 2.0).astype(int),
+                                 em + el, :] = np.power(r, es, dtype=np.complex128) * ZernikeInvariants3D.sphere_harmonics(m=em,
+                                                                                                                           n=el,
+                                                                                                                           phi=theta,
+                                                                                                                           theta=phi)
 
 
         return (polynomials
@@ -690,5 +690,5 @@ class ComplexInvariants3D(CafmidComplexInvariant3D):
         for idx, image in enumerate(images):
             matlab_moments[idx] = matlab_complex_moments(image.cpu().numpy(),
                                                          self.max_rank,
-                                                         norm=1)
+                                                         norm=3)
         return matlab_moments

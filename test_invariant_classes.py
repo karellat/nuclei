@@ -34,7 +34,7 @@ def _test_polynomials(model: Invariant3D):
     python_polynomials = model.polynomials.cpu().numpy()
     assert_allclose(np.squeeze(python_polynomials),
                     np.squeeze(matlab_polynomials),
-                    rtol=1e-14, atol=1e-14)
+                    rtol=1e-12, atol=1e-12)
 
 
 def _test_moments(model: Invariant3D):
@@ -105,7 +105,7 @@ def _test_geometric(_test_fnc):
 
 def _test_complex(_test_fnc): 
     model = ComplexInvariants3D(typeg=TYPEG,
-                                types=GEOMETRIC_TYPES,
+                                types=TYPES,
                                 num_invariants=NUM_INVARIANTS,
                                 cube_side=SRZ,
                                 max_rank=MAX_RANK,

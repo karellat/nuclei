@@ -17,35 +17,48 @@ end
 
 [n1,n2,n3]=size(img);
 cr=zeros(rd+1,floor(rd/2)+1,2*rd+1);
-
 cd = find(img(:));
 if isempty(cd)
     return
 end
 v=img(cd);
-[x, y, z] = ind2sub(size(img),cd);
-clear img;
+[x, y, z] = ind2sub(size(img), cd);
 
+% TODO: Check coordinates implement norm 1, 2
 sv=sum(v);
 if norm==1
     t1=(n1-1)/2;
     t2=(n2-1)/2;
     t3=(n3-1)/2;
-else
+    x=x-t1;
+    y=y-t2;
+    z=z-t3;
+elseif norm==2
     if sv~=0
         t1 = sum(x .* v) / sv;
         t2 = sum(y .* v) / sv;
         t3 = sum(z .* v) / sv;
+        x=x-t1;
+        y=y-t2;
+        z=z-t3;
     else
         t1=(n1-1)/2;
         t2=(n2-1)/2;
         t3=(n3-1)/2;
+        x=x-t1;
+        y=y-t2;
+        z=z-t3;
     end
+elseif norm==3
+    % Normalize between -1 and 1
+    [x,y,z]= meshgrid(linspace(-1,1,n1), linspace(-1,1,n2), linspace(-1,1,n3));
+    x = x(:)';
+    y = y(:)';
+    z = z(:)';
+    v = img(:)';
 end
-x=x-t1;
-y=y-t2;
-z=z-t3;
 
+clear img;
 r=sqrt(x.^2+y.^2+z.^2);
 theta=acos(z./r);
 assert(sum(isnan(theta)) == 1);
