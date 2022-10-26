@@ -679,6 +679,7 @@ class ComplexInvariants3D(CafmidComplexInvariant3D):
                 )
 
     def normalization_moments(self, moments: torch.Tensor) -> torch.Tensor:
+        # TODO: Add normalizations
         return moments
 
     def _get_matlab_polynomials(self) -> np.ndarray:
