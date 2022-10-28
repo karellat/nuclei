@@ -25,7 +25,7 @@ def _torch_images():
     ).to(torch.device(DEVICE))
 
 
-def _test_polynomials(model: Invariant3D):
+def _test_polynomials(model: Invariant3D,rtol=1e-12, atol=1e-12):
     srz = model.cube_side
     matlab_polynomials = (model._get_matlab_polynomials()
                           .reshape((*model.get_polynomial_shape(), srz, srz, srz), order='F')
@@ -34,7 +34,7 @@ def _test_polynomials(model: Invariant3D):
     python_polynomials = model.polynomials.cpu().numpy()
     assert_allclose(np.squeeze(python_polynomials),
                     np.squeeze(matlab_polynomials),
-                    rtol=1e-12, atol=1e-12)
+                    rtol=rtol, atol=atol)
 
 
 def _test_moments(model: Invariant3D):
@@ -103,13 +103,14 @@ def _test_geometric(_test_fnc):
     _test_fnc(model)
 
 
-def _test_complex(_test_fnc): 
+def _test_complex(_test_fnc):
     model = ComplexInvariants3D(typeg=TYPEG,
                                 types=TYPES,
                                 num_invariants=NUM_INVARIANTS,
                                 cube_side=SRZ,
                                 max_rank=MAX_RANK,
                                 device=torch.device(DEVICE))
+
     _test_fnc(model)
 
 
@@ -158,9 +159,6 @@ class TestGeometricInvariants3D(TestCase):
 
 
 class TestComplexInvariants3D(TestCase):
-    def test_polynomials(self):
-        _test_complex(_test_polynomials)
-
     def test_moments(self):
         _test_complex(_test_moments)
 

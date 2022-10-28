@@ -14,8 +14,7 @@ from scipy.special import gammaln
 # Zernike
 from matlab_bridge import matlab_zernike_polynomials, matlab_cafmi3dcomplex, matlab_readinv3dst, matlab_zernike_moments
 # Geometric
-from matlab_bridge import matlab_geometric_polynomials, matlab_geometric_moments, matlab_complex_polynomials, \
-    matlab_complex_moments
+from matlab_bridge import matlab_geometric_polynomials, matlab_geometric_moments, matlab_complex_moments
 
 
 # TODO: Doc
@@ -65,8 +64,8 @@ class Invariant3D(ABC):
                 dim=-1)
         )
 
-    def get_coords(self, lower=-1, upper=1, order='F') -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        coords = np.linspace(lower, upper, self.cube_side, dtype=np.float64)
+    def get_coords(self, lower=-1, upper=1, order='F', dtype=np.float64) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        coords = np.linspace(lower, upper, self.cube_side, dtype=dtype)
         [x, y, z] = np.meshgrid(coords, coords, coords)
         x = x.flatten(order=order)
         y = y.flatten(order=order)
@@ -640,7 +639,10 @@ class GeometricInvariants3D(CafmidstInvariant3D):
 
 class ComplexInvariants3D(CafmidComplexInvariant3D):
     def init_polynomials(self) -> np.ndarray:
-        x, y, z = self.get_coords(-1, 1, order='F')
+        assert (self.cube_side - 1) % 2 == 0, f"Cube side should be odd number.(cube_side={self.cube_side})"
+        t = int((self.cube_side - 1) / 2)
+        # TODO: Check meshgrid and ind2sub
+        y, x, z = self.get_coords(-t, t, order='F')
 
         # Spherical coordinate system
         r = np.sqrt(x ** 2 + y ** 2 + z ** 2, dtype=np.float64)
@@ -663,12 +665,10 @@ class ComplexInvariants3D(CafmidComplexInvariant3D):
                     # NOTE: scipy.special.sph_harm(m, n, phi, theta) matlab.spherical_harmonics(n, m, theta, phi)
                      polynomials[es,
                                  np.floor(el / 2.0).astype(int),
-                                 em + el, :] = np.power(r, es, dtype=np.complex128) * ZernikeInvariants3D.sphere_harmonics(m=em,
-                                                                                                                           n=el,
-                                                                                                                           phi=theta,
-                                                                                                                           theta=phi)
-
-
+                                 em + el, :] = np.power(r, es, dtype=np.float64) * ZernikeInvariants3D.sphere_harmonics(m=em,
+                                                                                                                        n=el,
+                                                                                                                        theta=phi,
+                                                                                                                        phi=theta)
         return (polynomials
                 # Matlab format
                 .reshape((*self.get_polynomial_shape(),
@@ -679,17 +679,20 @@ class ComplexInvariants3D(CafmidComplexInvariant3D):
                 )
 
     def normalization_moments(self, moments: torch.Tensor) -> torch.Tensor:
-        # TODO: Add normalizations
+        m000 = torch.abs(moments[:, 0, 0, 0])
+        for p in range(0, moments.shape[1]):
+            moments[:, p] /= m000[..., np.newaxis, np.newaxis]**(p/3.0+1)
+            moments[:, p] *= np.pi ** (p / 6) * (p + 3) / 1.5 ** (p / 3 + 1) / 2
         return moments
 
     def _get_matlab_polynomials(self) -> np.ndarray:
-        return matlab_complex_polynomials(szm=self.cube_side,
-                                          order=self.max_rank)
+        raise NotImplementedError("No matlab template for polynomials.")
 
     def _get_matlab_moments(self, images: torch.Tensor) -> np.ndarray:
         matlab_moments = np.zeros([images.shape[0], *self.get_polynomial_shape()], dtype=np.complex128)
         for idx, image in enumerate(images):
             matlab_moments[idx] = matlab_complex_moments(image.cpu().numpy(),
                                                          self.max_rank,
-                                                         norm=3)
+                                                         norm=1)
+
         return matlab_moments

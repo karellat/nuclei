@@ -162,12 +162,7 @@ def matlab_geometric_moments(image, order, typec):
     return octave.cm3d(image, order, typec)
 
 
-def matlab_complex_polynomials(szm, order):
-    _add_matlab()
-    return octave.cc3dpoly(szm, order)
-
-
-def matlab_complex_moments(image, order, norm=1):
+def matlab_complex_moments(image, order, norm):
     _add_matlab()
     return octave.ccm3d(image, order, norm)
 

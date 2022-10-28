@@ -23,13 +23,12 @@ if isempty(cd)
 end
 v=img(cd);
 [x, y, z] = ind2sub(size(img), cd);
-
 % TODO: Check coordinates implement norm 1, 2
 sv=sum(v);
 if norm==1
-    t1=(n1-1)/2;
-    t2=(n2-1)/2;
-    t3=(n3-1)/2;
+    t1=(n1+1)/2;
+    t2=(n2+1)/2;
+    t3=(n3+1)/2;
     x=x-t1;
     y=y-t2;
     z=z-t3;
@@ -49,34 +48,29 @@ elseif norm==2
         y=y-t2;
         z=z-t3;
     end
-elseif norm==3
-    % Normalize between -1 and 1
-    [x,y,z]= meshgrid(linspace(-1,1,n1), linspace(-1,1,n2), linspace(-1,1,n3));
-    x = x(:)';
-    y = y(:)';
-    z = z(:)';
-    v = img(:)';
 end
-
-clear img;
 r=sqrt(x.^2+y.^2+z.^2);
 theta=acos(z./r);
 assert(sum(isnan(theta)) == 1);
 theta(isnan(theta)) = 0;
 phi=atan2(y,x);
 
+
 for es=0:rd %order
     for el=mod(es,2):2:es  %latitudinal repetition
         for em=-el:el  %longitudinal repetition
             rmn=r.^es;
             vmn=rmn.*spherical_harmonic(el,em,theta,phi);
-%             vmn=rmn.*spherical_harmonic(el,em,theta,phi).*r.^2.*sin(theta);
             prodiv=v.*vmn;
             cr(es+1,floor(el/2)+1,em+el+1)=sum(prodiv(:));
         end
     end
 end
-%normalization to density of sampling
-%A=A/rmax^3;
-%normalization to density of sampling + contrast
-%cr=cr/cr(1,1,1);
+
+order=size(cr,1) - 1;
+m000=abs(cr(1, 1, 1));
+for p=0:order
+        %normalization to scaling
+    cr(p+1,:,:)=cr(p+1,:,:)/m000^(p/3+1);
+    cr(p+1,:,:)=cr(p+1,:,:)*pi^(p/6)*(p+3)/1.5^(p/3+1)/2;
+end
